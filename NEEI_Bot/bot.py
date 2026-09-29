@@ -361,9 +361,156 @@ async def listneei(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
+# Data estruturada dos membros do NEEI organizada por orgãos
+NEEI_STRUCTURE = [
+    {
+        "organ": "Mesa Assembleia",
+        "members": [
+            {"role": "Presidente", "name": "João Pedro Esteves Caldas", "num": "a64716"},
+            {"role": "1º secretário", "name": "Carolina Garcia Fernandes", "num": "a59445"},
+            {"role": "2° Secretário", "name": "Nuno José Freitas da Silva", "num": "a63426"},
+        ],
+    },
+    {
+        "organ": "Direção",
+        "members": [
+            {"role": "Presidente", "name": "Daniel Filipe Campos Coelho", "num": "a54457"},
+            {"role": "Vice-Presidente", "name": "Luís Carlos Miranda Fernandes", "num": "a50765"},
+            {"role": "Tesoureiro", "name": "Vítor Hugo da Silva Monteiro", "num": "a60862"},
+            {"role": "1° Secretário", "name": "Joana dos Santos Moreira", "num": "a63416"},
+            {"role": "2° Secretario", "name": "Artur Gonçalo Teixeira Pinheiro", "num": "a60325"},
+            {"role": "1°Vogal", "name": "Inês Freitas", "num": "a60838"},
+            {"role": "2° Vogal", "name": "Lara Sebastião Lopes", "num": "a68015"},
+            {"role": "3° Vogal", "name": "João André Pereira Rodrigues", "num": "a67357"},
+            {"role": "4° Vogal", "name": "Gonçalo Filipe Pedrosa Pereira", "num": "a59451"},
+            {"role": "5° Vogal", "name": "Tiago David Gonçalves Tomás", "num": "a64725"},
+            {"role": "6° Vogal", "name": "Carlos Miguel Gomes Moreira", "num": "a56547"},
+        ],
+    },
+    {
+        "organ": "Conselho Fiscal",
+        "members": [
+            {"role": "Presidente", "name": "Francisco José da Silva Morais", "num": "a60556"},
+            {"role": "Vice-Presidente", "name": "Diogo José Teixeira de Sousa", "num": "a55726"},
+            {"role": "Relator", "name": "Pedro Miguel Coelho Ribeiro", "num": "a60850"},
+        ],
+    },
+]
+
+
+@bot.tree.command(
+    name="neei",
+    description="Mostra a lista dos membros dos órgãos sociais do NEEI.",
+    guild=guild_obj,
+)
+async def neei(interaction: discord.Interaction):
+    guild = interaction.guild
+    import re
+
+    all_members = guild.members
+
+    embed = discord.Embed(
+        title="🏛️ Órgãos Sociais do NEEI",
+        color=discord.Color.blue(),
+    )
+
+    total_membros = 0
+
+    for organ_info in NEEI_STRUCTURE:
+        lines = []
+        for item in organ_info["members"]:
+            role_title = item["role"]
+            name = item["name"]
+            num = item["num"]
+            num_digits = num.lstrip("aA")
+            pattern = re.compile(re.escape(num_digits), re.IGNORECASE)
+
+            matched_member = None
+            if all_members:
+                for m in all_members:
+                    if pattern.search(m.display_name) or pattern.search(m.name):
+                        matched_member = m
+                        break
+
+            user_mention = matched_member.mention if matched_member else "@utilizador"
+            discord_tag = f" (`{matched_member.name}`)" if matched_member else ""
+
+            # Exemplo de linha: - **Presidente:** @User João Silva (a60000) (`username`)
+            lines.append(f"• **{role_title}:** {user_mention} {name} ({num}){discord_tag}")
+            total_membros += 1
+
+        embed.add_field(
+            name=f"📌 {organ_info['organ']}",
+            value="\n".join(lines),
+            inline=False
+        )
+
+    embed.set_footer(text=f"Total: {total_membros} membro(s)")
+
+    # Desativa pings/notificações para utilizadores e roles mencionadas no Embed
+    allowed_mentions = discord.AllowedMentions(users=False, roles=False, everyone=False)
+
+    await interaction.response.send_message(
+        embed=embed,
+        allowed_mentions=allowed_mentions
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# Comando: Enviar Imagem via Bot (/sayimage)
+# ─────────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="sayimage",
+    description="Envia uma imagem (e opcionalmente uma legenda) como se fosse o bot. (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(
+    imagem="A imagem a enviar",
+    legenda="Legenda ou texto opcional para acompanhar a imagem",
+)
+async def sayimage(
+    interaction: discord.Interaction,
+    imagem: discord.Attachment,
+    legenda: str | None = None,
+):
+    # 1. Verificar permissões (Admins/Managers)
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    # 2. Verificar se o ficheiro anexado é realmente uma imagem
+    if not (imagem.content_type and imagem.content_type.startswith("image/")):
+        await interaction.response.send_message(
+            "⚠️ O ficheiro enviado não parece ser uma imagem válida.",
+            ephemeral=True,
+        )
+        return
+
+    # 3. Converter a imagem enviada para um discord.File para o bot reenviar
+    image_file = await imagem.to_file()
+
+    # 4. Confirmar a interação de forma invisível/ephemeral para quem usou o comando
+    await interaction.response.send_message(
+        "✅ Imagem enviada com sucesso!",
+        ephemeral=True,
+    )
+
+    # 5. Enviar a imagem no canal público como uma mensagem normal do bot
+    await interaction.channel.send(
+        content=legenda,
+        file=image_file,
+    )
+
+
 # ─────────────────────────────────────────────────────────────
 # Arranque do Bot
 # ─────────────────────────────────────────────────────────────
+
+
 
 if __name__ == "__main__":
     bot.run(config.get_token())
