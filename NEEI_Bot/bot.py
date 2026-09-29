@@ -242,6 +242,120 @@ async def adminremove(interaction: discord.Interaction, user: discord.Member):
 
 
 # ─────────────────────────────────────────────────────────────
+# Comandos: Listagens (/listadmin e /listneei)
+# ─────────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="listadmin",
+    description="Mostra todos os Admins e Managers do bot. (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+async def listadmin(interaction: discord.Interaction):
+    # 1. Verificar permissão
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    guild = interaction.guild
+    manager_ids = config.get_manager_ids()
+    admin_ids = data_manager.load_admins()
+
+    # 2. Construir linhas de Managers
+    manager_lines = []
+    for uid in manager_ids:
+        member = guild.get_member(int(uid))
+        if member:
+            manager_lines.append(f"👑 {member.mention} (`{member.name}`)")
+        else:
+            manager_lines.append(f"👑 ID: `{uid}` *(não encontrado no servidor)*")
+
+    # 3. Construir linhas de Admins
+    admin_lines = []
+    for uid in admin_ids:
+        member = guild.get_member(int(uid))
+        if member:
+            admin_lines.append(f"🛡️ {member.mention} (`{member.name}`)")
+        else:
+            admin_lines.append(f"🛡️ ID: `{uid}` *(não encontrado no servidor)*")
+
+    # 4. Construir embed
+    embed = discord.Embed(
+        title="📋 Lista de Admins do Bot",
+        color=discord.Color.gold(),
+    )
+    embed.add_field(
+        name=f"👑 Managers ({len(manager_lines)})",
+        value="\n".join(manager_lines) if manager_lines else "*Nenhum manager definido.*",
+        inline=False,
+    )
+    embed.add_field(
+        name=f"🛡️ Admins ({len(admin_lines)})",
+        value="\n".join(admin_lines) if admin_lines else "*Nenhum admin adicionado ainda.*",
+        inline=False,
+    )
+    embed.set_footer(text="Managers são definidos no .env | Admins via /admingive")
+
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(
+    name="listneei",
+    description="Mostra todos os membros com a role NEEI. (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+async def listneei(interaction: discord.Interaction):
+    # 1. Verificar permissão
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    # 2. Obter a role NEEI
+    role = await get_neei_role(interaction.guild)
+    if role is None:
+        await interaction.response.send_message(
+            f"❌ Não foi encontrado nenhum cargo chamado **'{config.get_neei_role_name()}'** neste servidor.",
+            ephemeral=True,
+        )
+        return
+
+    # 3. Listar membros com a role
+    members_with_role = role.members
+
+    if not members_with_role:
+        await interaction.response.send_message(
+            f"📋 Nenhum membro tem atualmente o cargo **{role.name}**.",
+            ephemeral=True,
+        )
+        return
+
+    # 4. Construir embed (limite de 25 por campo do Discord)
+    lines = [f"• {m.mention} (`{m.name}`)" for m in members_with_role]
+
+    embed = discord.Embed(
+        title=f"📋 Membros com o cargo {role.name}",
+        description="\n".join(lines[:25]),  # Limite de segurança do Discord
+        color=role.color if role.color.value != 0 else discord.Color.blue(),
+    )
+    embed.set_footer(text=f"Total: {len(members_with_role)} membro(s)")
+
+    # Se houver mais de 25, adiciona nota
+    if len(members_with_role) > 25:
+        embed.add_field(
+            name="⚠️ Lista truncada",
+            value=f"*Existem {len(members_with_role)} membros no total. Apenas os primeiros 25 são mostrados.*",
+            inline=False,
+        )
+
+    await interaction.response.send_message(embed=embed)
+
+
+# ─────────────────────────────────────────────────────────────
 # Arranque do Bot
 # ─────────────────────────────────────────────────────────────
 
