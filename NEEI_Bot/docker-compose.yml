@@ -1,0 +1,9 @@
+services:
+  neei-bot:
+    build: .
+    container_name: neei_bot
+    restart: unless-stopped       # Reinicia automaticamente se crashar
+    env_file:
+      - .env                      # Carrega as variáveis do ficheiro .env
+    volumes:
+      - ./data:/app/data          # Persiste o admins.json entre reinícios
