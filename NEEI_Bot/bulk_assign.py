@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 """
-Script de atribuição em massa da role NEEI.
-Procura cada membro no servidor pelo número mecanográfico
+Script de atribuicao em massa da role NEEI.
+Procura cada membro no servidor pelo numero mecanografico
 (presente no display name no formato "Nome (aXXXXX)")
 e atribui automaticamente a role NEEI.
 
@@ -9,123 +10,135 @@ Uso: python bulk_assign.py
 
 import asyncio
 import re
+import sys
+import io
+
+# Forcar output UTF-8 no Windows
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+
 import discord
 from dotenv import load_dotenv
 import config
 
 # ─────────────────────────────────────────────────────────────
-# Lista de números mecanográficos a receber o cargo NEEI
+# Lista de numeros mecanograficos a receber o cargo NEEI
 # ─────────────────────────────────────────────────────────────
 
 NEEI_MEMBERS = [
-    "a64716",  # João Pedro Esteves Caldas         (Mesa Assembleia - Presidente)
-    "a59445",  # Carolina Garcia Fernandes          (Mesa Assembleia - 1º Secretário)
-    "a63426",  # Nuno José Freitas da Silva         (Mesa Assembleia - 2º Secretário)
-    "a54457",  # Daniel Filipe Campos Coelho        (Direção - Presidente)
-    "a50765",  # Luís Carlos Miranda Fernandes      (Direção - Vice-Presidente)
-    "a60862",  # Vítor Hugo da Silva Monteiro       (Direção - Tesoureiro)
-    "a63416",  # Joana dos Santos Moreira           (Direção - 1º Secretário)
-    "a60325",  # Artur Gonçalo Teixeira Pinheiro    (Direção - 2º Secretário)
-    "a60838",  # Inês Freitas                       (Direção - 1º Vogal)
-    "a68015",  # Lara Sebastião Lopes               (Direção - 2º Vogal)
-    "a67357",  # João André Pereira Rodrigues       (Direção - 3º Vogal)
-    "a59451",  # Gonçalo Filipe Pedrosa Pereira     (Direção - 4º Vogal)
-    "a64725",  # Tiago David Gonçalves Tomás        (Direção - 5º Vogal)
-    "a56547",  # Carlos Miguel Gomes Moreira        (Direção - 6º Vogal)
-    "a60556",  # Francisco José da Silva Morais     (Conselho Fiscal - Presidente)
-    "a55726",  # Diogo José Teixeira de Sousa       (Conselho Fiscal - Vice-Presidente)
-    "a60850",  # Pedro Miguel Coelho Ribeiro        (Conselho Fiscal - Relator)
+    "a64716",  # Joao Pedro Esteves Caldas          (Mesa - Presidente)
+    "a59445",  # Carolina Garcia Fernandes           (Mesa - 1o Secretario)
+    "a63426",  # Nuno Jose Freitas da Silva          (Mesa - 2o Secretario)
+    "a54457",  # Daniel Filipe Campos Coelho         (Direcao - Presidente)
+    "a50765",  # Luis Carlos Miranda Fernandes       (Direcao - Vice-Presidente)
+    "a60862",  # Vitor Hugo da Silva Monteiro        (Direcao - Tesoureiro)
+    "a63416",  # Joana dos Santos Moreira            (Direcao - 1o Secretario)
+    "a60325",  # Artur Goncalo Teixeira Pinheiro     (Direcao - 2o Secretario)
+    "a60838",  # Ines Freitas                        (Direcao - 1o Vogal)
+    "a68015",  # Lara Sebastiao Lopes                (Direcao - 2o Vogal)
+    "a67357",  # Joao Andre Pereira Rodrigues        (Direcao - 3o Vogal)
+    "a59451",  # Goncalo Filipe Pedrosa Pereira      (Direcao - 4o Vogal)
+    "a64725",  # Tiago David Goncalves Tomas         (Direcao - 5o Vogal)
+    "a56547",  # Carlos Miguel Gomes Moreira         (Direcao - 6o Vogal)
+    "a60556",  # Francisco Jose da Silva Morais      (Conselho Fiscal - Presidente)
+    "a55726",  # Diogo Jose Teixeira de Sousa        (Conselho Fiscal - Vice-Presidente)
+    "a60850",  # Pedro Miguel Coelho Ribeiro         (Conselho Fiscal - Relator)
 ]
 
 
 # ─────────────────────────────────────────────────────────────
-# Lógica do script
+# Logica principal (sem bot, usa HTTPClient direto)
 # ─────────────────────────────────────────────────────────────
 
-intents = discord.Intents.default()
-intents.members = True
-client = discord.Client(intents=intents)
-
-
-@client.event
-async def on_ready():
-    print(f"\n✅ Ligado como {client.user}")
-    print("=" * 55)
-
-    guild = client.get_guild(config.get_guild_id())
-    if guild is None:
-        print("❌ Servidor não encontrado. Verifica o GUILD_ID no .env")
-        await client.close()
-        return
-
-    # Forçar o carregamento de TODOS os membros do servidor para a cache
-    print("⏳ A carregar membros do servidor...")
-    await guild.chunk()
-    print(f"✅ {guild.member_count} membros carregados.\n")
-
-    # Obter a role NEEI
+async def main():
+    load_dotenv()
+    token     = config.get_token()
+    guild_id  = config.get_guild_id()
     role_name = config.get_neei_role_name()
-    role = discord.utils.get(guild.roles, name=role_name)
+
+    intents = discord.Intents.default()
+    intents.members = True
+    client = discord.Client(intents=intents)
+
+    await client.login(token)
+
+    # Buscar o guild diretamente via HTTP (sem precisar de on_ready)
+    guild = await client.fetch_guild(guild_id)
+    print(f"\n[OK] Guild encontrada: {guild.name}")
+
+    # Buscar a role NEEI
+    roles = await guild.fetch_roles()
+    role  = discord.utils.get(roles, name=role_name)
     if role is None:
-        print(f"❌ Cargo '{role_name}' não encontrado no servidor.")
+        print(f"[ERRO] Cargo '{role_name}' nao encontrado.")
         await client.close()
         return
 
-    print(f"🎯 Cargo alvo: {role.name}")
-    print(f"👥 Total de membros a processar: {len(NEEI_MEMBERS)}\n")
+    print(f"[ALVO] Cargo: {role.name} (ID: {role.id})")
+
+    # Buscar TODOS os membros do servidor via HTTP
+    print("[...] A carregar todos os membros do servidor...")
+    all_members = []
+    async for member in guild.fetch_members(limit=None):
+        all_members.append(member)
+    print(f"[OK] {len(all_members)} membros carregados.\n")
+    print("=" * 55)
+    print(f"[INFO] A processar {len(NEEI_MEMBERS)} numeros mecanograficos...")
+    print("=" * 55)
 
     found     = []
     not_found = []
     skipped   = []
 
-    # Processar cada número mecanográfico
     for num in NEEI_MEMBERS:
-        # Procura por (aXXXXX) no display name ou username do membro
-        pattern = re.compile(re.escape(num), re.IGNORECASE)
-        match = discord.utils.find(
-            lambda m: pattern.search(m.display_name) or pattern.search(m.name),
-            guild.members,
-        )
+        # O display name usa apenas o numero sem o "a" -> ex: "Nome (64716)"
+        num_digits = num.lstrip("aA")  # Remove o prefixo "a" -> "64716"
+        pattern = re.compile(re.escape(num_digits), re.IGNORECASE)
+
+        match = None
+        for m in all_members:
+            if pattern.search(m.display_name) or pattern.search(m.name):
+                match = m
+                break
 
         if match is None:
             not_found.append(num)
-            print(f"  ⚠️  Não encontrado: {num}")
+            print(f"  [NAO ENCONTRADO] {num}")
             continue
 
-        if role in match.roles:
+        # Verificar se ja tem a role (roles do member via fetch)
+        member_roles_ids = [r.id for r in match.roles]
+        if role.id in member_roles_ids:
             skipped.append((num, match.display_name))
-            print(f"  ⏭️  Já tem o cargo : {match.display_name} ({num})")
+            print(f"  [JA TEM CARGO]   {match.display_name} ({num})")
             continue
 
         try:
-            await match.add_roles(role, reason="Atribuição em massa via bulk_assign.py")
+            await match.add_roles(role, reason="Atribuicao em massa via bulk_assign.py")
             found.append((num, match.display_name))
-            print(f"  ✅ Cargo atribuído: {match.display_name} ({num})")
+            print(f"  [ATRIBUIDO]      {match.display_name} ({num})")
         except discord.Forbidden:
-            print(f"  ❌ Sem permissão  : {match.display_name} ({num})")
+            print(f"  [SEM PERMISSAO]  {match.display_name} ({num})")
         except discord.HTTPException as e:
-            print(f"  ❌ Erro HTTP      : {match.display_name} ({num}) — {e}")
+            print(f"  [ERRO HTTP]      {match.display_name} ({num}) -- {e}")
 
-        # Pequena pausa para não exceder o rate limit da API do Discord
         await asyncio.sleep(0.5)
 
     # Resumo final
     print("\n" + "=" * 55)
-    print("📊 RESUMO")
+    print("RESUMO FINAL")
     print("=" * 55)
-    print(f"  ✅ Cargo atribuído : {len(found)}")
-    print(f"  ⏭️  Já tinham o cargo: {len(skipped)}")
-    print(f"  ⚠️  Não encontrados : {len(not_found)}")
+    print(f"  Cargo atribuido  : {len(found)}")
+    print(f"  Ja tinham o cargo: {len(skipped)}")
+    print(f"  Nao encontrados  : {len(not_found)}")
 
     if not_found:
-        print("\n  Números mecanográficos não encontrados no servidor:")
+        print("\n  Numeros nao encontrados no servidor:")
         for num in not_found:
             print(f"    - {num}")
 
-    print("\n✔️  Script concluído!\n")
+    print("\n[CONCLUIDO]\n")
     await client.close()
 
 
 if __name__ == "__main__":
-    load_dotenv()
-    client.run(config.get_token())
+    asyncio.run(main())
