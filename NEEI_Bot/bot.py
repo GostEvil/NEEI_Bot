@@ -38,6 +38,12 @@ async def get_neei_role(guild: discord.Guild) -> discord.Role | None:
     return discord.utils.get(guild.roles, name=role_name)
 
 
+def user_has_neei_role(interaction: discord.Interaction) -> bool:
+    """Verifica se o utilizador tem o cargo NEEI no servidor."""
+    role_name = config.get_neei_role_name()
+    return any(role.name == role_name for role in interaction.user.roles)
+
+
 # ─────────────────────────────────────────────────────────────
 # Eventos do Bot
 # ─────────────────────────────────────────────────────────────
@@ -247,14 +253,14 @@ async def adminremove(interaction: discord.Interaction, user: discord.Member):
 
 @bot.tree.command(
     name="listadmin",
-    description="Mostra todos os Admins e Managers do bot. (Apenas Admins/Managers)",
+    description="Mostra todos os Admins e Managers do bot. (Apenas membros NEEI/Admins/Managers)",
     guild=guild_obj,
 )
 async def listadmin(interaction: discord.Interaction):
-    # 1. Verificar permissão
-    if not user_is_admin_or_manager(interaction):
+    # 1. Verificar permissão — cargo NEEI, Admin ou Manager
+    if not (user_has_neei_role(interaction) or user_is_admin_or_manager(interaction)):
         await interaction.response.send_message(
-            "❌ Não tens permissão para usar este comando.",
+            "❌ Apenas membros com o cargo **NEEI** podem usar este comando.",
             ephemeral=True,
         )
         return
@@ -303,14 +309,14 @@ async def listadmin(interaction: discord.Interaction):
 
 @bot.tree.command(
     name="listneei",
-    description="Mostra todos os membros com a role NEEI. (Apenas Admins/Managers)",
+    description="Mostra todos os membros com a role NEEI. (Apenas membros NEEI/Admins/Managers)",
     guild=guild_obj,
 )
 async def listneei(interaction: discord.Interaction):
-    # 1. Verificar permissão
-    if not user_is_admin_or_manager(interaction):
+    # 1. Verificar permissão — cargo NEEI, Admin ou Manager
+    if not (user_has_neei_role(interaction) or user_is_admin_or_manager(interaction)):
         await interaction.response.send_message(
-            "❌ Não tens permissão para usar este comando.",
+            "❌ Apenas membros com o cargo **NEEI** podem usar este comando.",
             ephemeral=True,
         )
         return
