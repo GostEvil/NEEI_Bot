@@ -1,0 +1,24 @@
+# Ambiente virtual
+venv/
+.venv/
+env/
+
+# Variáveis de ambiente (NUNCA colocar no git!)
+.env
+
+# Dados persistidos do bot
+data/admins.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
