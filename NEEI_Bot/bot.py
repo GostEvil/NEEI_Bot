@@ -646,6 +646,53 @@ async def sayimage(
 
 
 # ─────────────────────────────────────────────────────────────
+# Comando: Eliminar Mensagens (/delete)
+# ─────────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="delete",
+    description="Elimina um número específico de mensagens no canal. (Apenas Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(quantidade="O número de mensagens a eliminar (máx: 100)")
+async def delete_messages(interaction: discord.Interaction, quantidade: int):
+    # 1. Apenas Managers
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    # 2. Validar quantidade
+    if quantidade < 1 or quantidade > 100:
+        await interaction.response.send_message(
+            "⚠️ A quantidade deve estar entre 1 e 100.",
+            ephemeral=True,
+        )
+        return
+
+    # 3. Eliminar as mensagens
+    await interaction.response.defer(ephemeral=True)
+    try:
+        deleted = await interaction.channel.purge(limit=quantidade)
+        await interaction.followup.send(
+            f"✅ Foram eliminadas **{len(deleted)}** mensagens com sucesso!",
+            ephemeral=True
+        )
+    except discord.Forbidden:
+        await interaction.followup.send(
+            "❌ O bot não tem permissões (`Manage Messages`) para eliminar mensagens neste canal.",
+            ephemeral=True
+        )
+    except Exception as e:
+        await interaction.followup.send(
+            f"❌ Ocorreu um erro: `{e}`",
+            ephemeral=True
+        )
+
+
+# ─────────────────────────────────────────────────────────────
 # Arranque do Bot
 # ─────────────────────────────────────────────────────────────
 
