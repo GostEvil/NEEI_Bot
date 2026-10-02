@@ -78,8 +78,9 @@ async def on_ready():
         print(f"✅ Bot '{bot.user}' online!")
         print(f"📋 {len(synced)} comando(s) slash sincronizados.")
         print(f"🔑 Managers carregados: {config.get_manager_ids()}")
+        print("🛠️ Commands registered:", [c.name for c in bot.tree.get_commands()])
     except Exception as e:
-        print(f"❌ Erro ao sincronizar comandos: {e}")
+        print(f"Error syncing commands: {e}")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -720,7 +721,7 @@ async def delete_messages(interaction: discord.Interaction, quantidade: int):
 
 @bot.tree.command(
     name="logs",
-    description="Mostra as logs de ações feitas ou relativas a um grupo (manager, admin, neei). (Apenas Admins/Managers)",
+    description="Mostra logs de ações por grupo (manager, admin, neei).",
     guild=guild_obj,
 )
 @app_commands.describe(grupo="O grupo cujas logs queres ver (manager, admin, neei)")
