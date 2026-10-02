@@ -724,12 +724,12 @@ async def delete_messages(interaction: discord.Interaction, quantidade: int):
     description="Mostra logs de ações por grupo (manager, admin, neei).",
     guild=guild_obj,
 )
-@app_commands.describe(grupo="O grupo cujas logs queres ver (manager, admin, neei, . para todos)", pagina="Número da página (padrão 1)")
+@app_commands.describe(grupo="O grupo cujas logs queres ver (manager, admin, neei, all para todos)", pagina="Número da página (padrão 1)")
 @app_commands.choices(grupo=[
     app_commands.Choice(name="Managers", value="manager"),
     app_commands.Choice(name="Admins", value="admin"),
     app_commands.Choice(name="NEEI", value="neei"),
-    app_commands.Choice(name="All", value="."),
+    app_commands.Choice(name="All", value="all"),
 ])
 async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int = 1):
     if not user_is_admin_or_manager(interaction):
@@ -737,7 +737,7 @@ async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int
         return
 
     # Mapear o valor para o nome para apresentação
-    group_names = {"manager": "Managers", "admin": "Admins", "neei": "NEEI", ".": "All"}
+    group_names = {"manager": "Managers", "admin": "Admins", "neei": "NEEI", "all": "All", ".": "All"}
     # Em discord.py 2.x, grupo pode vir como str ou Choice dependendo do type hint.
     # Por segurança, caso venha como Choice, extraímos o value:
     group_val = getattr(grupo, "value", grupo)
@@ -757,7 +757,9 @@ async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int
         elif group_val == "neei":
             if log["actor_role"] == "neei" or log["action"] in ["neeigive", "neeiremove"]:
                 match = True
-        
+        elif group_val == "all":
+            match = True
+
         if match:
             filtered_logs.append(log)
             
