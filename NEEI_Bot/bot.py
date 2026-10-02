@@ -44,6 +44,14 @@ def user_has_neei_role(interaction: discord.Interaction) -> bool:
     return any(role.name == role_name for role in interaction.user.roles)
 
 
+async def get_verify_role(guild: discord.Guild) -> discord.Role | None:
+    """Procura e retorna o cargo de verificação no servidor. Retorna None se não configurado."""
+    role_id = config.get_verify_role_id()
+    if role_id:
+        return guild.get_role(role_id)
+    return None
+
+
 # ─────────────────────────────────────────────────────────────
 # Eventos do Bot
 # ─────────────────────────────────────────────────────────────
@@ -245,6 +253,122 @@ async def adminremove(interaction: discord.Interaction, user: discord.Member):
     await interaction.response.send_message(
         f"✅ Permissões de **Admin** do bot removidas de {user.mention} com sucesso."
     )
+
+
+# ─────────────────────────────────────────────────────────────
+# Comandos: Verificação (/verify, /unverify e /config)
+# ─────────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="verify",
+    description="Atribui o cargo de verificação a um utilizador. (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(user="O utilizador a ser verificado")
+async def verify(interaction: discord.Interaction, user: discord.Member):
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    role = await get_verify_role(interaction.guild)
+    if role is None:
+        await interaction.response.send_message(
+            "❌ O cargo de verificação não está configurado. Os Managers devem usar `/config`.",
+            ephemeral=True,
+        )
+        return
+
+    if role in user.roles:
+        await interaction.response.send_message(
+            f"⚠️ {user.mention} já tem o cargo de verificação **{role.name}**.",
+            ephemeral=True,
+        )
+        return
+
+    try:
+        await user.add_roles(role, reason=f"Verificado por {interaction.user} via /verify")
+        await interaction.response.send_message(
+            f"✅ O cargo **{role.name}** foi atribuído a {user.mention} com sucesso!"
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ O bot não tem permissões para gerir o cargo de verificação. Verifica a hierarquia de cargos.",
+            ephemeral=True,
+        )
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Ocorreu um erro: `{e}`", ephemeral=True)
+
+
+@bot.tree.command(
+    name="unverify",
+    description="Remove o cargo de verificação de um utilizador. (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(user="O utilizador a perder a verificação")
+async def unverify(interaction: discord.Interaction, user: discord.Member):
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    role = await get_verify_role(interaction.guild)
+    if role is None:
+        await interaction.response.send_message(
+            "❌ O cargo de verificação não está configurado. Os Managers devem usar `/config`.",
+            ephemeral=True,
+        )
+        return
+
+    if role not in user.roles:
+        await interaction.response.send_message(
+            f"⚠️ {user.mention} não tem o cargo de verificação **{role.name}**.",
+            ephemeral=True,
+        )
+        return
+
+    try:
+        await user.remove_roles(role, reason=f"Removido por {interaction.user} via /unverify")
+        await interaction.response.send_message(
+            f"✅ A verificação foi removida de {user.mention}."
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ O bot não tem permissões para gerir o cargo de verificação.",
+            ephemeral=True,
+        )
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Ocorreu um erro: `{e}`", ephemeral=True)
+
+
+@bot.tree.command(
+    name="config",
+    description="Configura o cargo de verificação. (Apenas Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(role="O cargo que será atribuído na verificação")
+async def config_command(interaction: discord.Interaction, role: discord.Role):
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.",
+            ephemeral=True,
+        )
+        return
+
+    try:
+        config.set_verify_role_id(role.id)
+        await interaction.response.send_message(
+            f"✅ O cargo de verificação foi configurado para **{role.mention}** com sucesso!"
+        )
+    except Exception as e:
+        await interaction.response.send_message(
+            f"❌ Ocorreu um erro ao guardar a configuração no `.env`: `{e}`",
+            ephemeral=True,
+        )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -462,18 +586,17 @@ async def neei(interaction: discord.Interaction):
 
 @bot.tree.command(
     name="sayimage",
-    description="Envia uma imagem (e opcionalmente uma legenda) como se fosse o bot. (Apenas Admins/Managers)",
+    description="Reenvia uma imagem para o canal configurado como se fosse o bot. (Apenas Admins/Managers)",
     guild=guild_obj,
 )
 @app_commands.describe(
-    imagem="A imagem a enviar",
-    legenda="Legenda ou texto opcional para acompanhar a imagem",
+    imagem="A imagem a reenviar pelo bot",
 )
 async def sayimage(
     interaction: discord.Interaction,
     imagem: discord.Attachment,
-    legenda: str | None = None,
 ):
+
     # 1. Verificar permissões (Admins/Managers)
     if not user_is_admin_or_manager(interaction):
         await interaction.response.send_message(
@@ -490,20 +613,36 @@ async def sayimage(
         )
         return
 
-    # 3. Converter a imagem enviada para um discord.File para o bot reenviar
+    # 3. Determinar o canal de destino (do .env ou o canal atual)
+    target_channel_id = config.get_target_channel_id()
+    target_channel = interaction.channel
+
+    if target_channel_id:
+        found_channel = interaction.guild.get_channel(target_channel_id)
+        if found_channel:
+            target_channel = found_channel
+        else:
+            try:
+                target_channel = await interaction.guild.fetch_channel(target_channel_id)
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"❌ Não foi possível encontrar o canal com ID `{target_channel_id}` definido no `.env`.",
+                    ephemeral=True,
+                )
+                return
+
+    # 4. Converter a imagem enviada para um discord.File
     image_file = await imagem.to_file()
 
-    # 4. Confirmar a interação de forma invisível/ephemeral para quem usou o comando
+    # 5. Enviar apenas a imagem no canal de destino
+    await target_channel.send(file=image_file)
+
+    # 6. Responder de forma privada (ephemeral) confirmando o envio
     await interaction.response.send_message(
-        "✅ Imagem enviada com sucesso!",
+        f"✅ Imagem enviada com sucesso no canal {target_channel.mention}!",
         ephemeral=True,
     )
 
-    # 5. Enviar a imagem no canal público como uma mensagem normal do bot
-    await interaction.channel.send(
-        content=legenda,
-        file=image_file,
-    )
 
 
 # ─────────────────────────────────────────────────────────────
