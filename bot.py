@@ -729,15 +729,20 @@ async def delete_messages(interaction: discord.Interaction, quantidade: int):
     app_commands.Choice(name="Admins", value="admin"),
     app_commands.Choice(name="NEEI", value="neei"),
 ])
-async def logs_command(interaction: discord.Interaction, grupo: app_commands.Choice[str]):
+async def logs_command(interaction: discord.Interaction, grupo: str):
     if not user_is_admin_or_manager(interaction):
         await interaction.response.send_message("❌ Não tens permissão para usar este comando.", ephemeral=True)
         return
 
+    # Mapear o valor para o nome para apresentação
+    group_names = {"manager": "Managers", "admin": "Admins", "neei": "NEEI"}
+    # Em discord.py 2.x, grupo pode vir como str ou Choice dependendo do type hint.
+    # Por segurança, caso venha como Choice, extraímos o value:
+    group_val = getattr(grupo, "value", grupo)
+    group_name = group_names.get(group_val, "Desconhecido")
+
     logs = data_manager.get_logs()
     filtered_logs = []
-    
-    group_val = grupo.value
     
     for log in logs:
         match = False
@@ -755,7 +760,7 @@ async def logs_command(interaction: discord.Interaction, grupo: app_commands.Cho
             filtered_logs.append(log)
             
     if not filtered_logs:
-        await interaction.response.send_message(f"📋 Não existem logs para a categoria **{grupo.name}**.", ephemeral=True)
+        await interaction.response.send_message(f"📋 Não existem logs para a categoria **{group_name}**.", ephemeral=False)
         return
         
     lines = []
@@ -770,7 +775,7 @@ async def logs_command(interaction: discord.Interaction, grupo: app_commands.Cho
         lines.append(line)
         
     embed = discord.Embed(
-        title=f"📋 Logs: {grupo.name}",
+        title=f"📋 Logs: {group_name}",
         color=discord.Color.light_grey()
     )
     
@@ -783,7 +788,7 @@ async def logs_command(interaction: discord.Interaction, grupo: app_commands.Cho
         
     embed.description = description
     
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(embed=embed, ephemeral=False)
 
 
 # ─────────────────────────────────────────────────────────────
