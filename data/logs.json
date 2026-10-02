@@ -1,0 +1,50 @@
+[
+  {
+    "timestamp": "2026-10-02T23:00:07.257594",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "neeigive",
+    "target_id": "1554523869975543824",
+    "details": "Atribuiu cargo NEEI"
+  },
+  {
+    "timestamp": "2026-10-03T00:00:07.348153",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "neeigive",
+    "target_id": "1554523869975543824",
+    "details": "Atribuiu cargo NEEI"
+  },
+  {
+    "timestamp": "2026-10-03T00:00:07.398766",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "neeigive",
+    "target_id": "1554523869975543824",
+    "details": "Atribuiu cargo NEEI"
+  },
+  {
+    "timestamp": "2026-10-02T23:00:24.083989",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "neeiremove",
+    "target_id": "1554523869975543824",
+    "details": "Removeu cargo NEEI"
+  },
+  {
+    "timestamp": "2026-10-03T00:00:24.113071",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "neeiremove",
+    "target_id": "1554523869975543824",
+    "details": "Removeu cargo NEEI"
+  },
+  {
+    "timestamp": "2026-10-03T00:00:24.142116",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "neeiremove",
+    "target_id": "1554523869975543824",
+    "details": "Removeu cargo NEEI"
+  }
+]

@@ -724,19 +724,20 @@ async def delete_messages(interaction: discord.Interaction, quantidade: int):
     description="Mostra logs de ações por grupo (manager, admin, neei).",
     guild=guild_obj,
 )
-@app_commands.describe(grupo="O grupo cujas logs queres ver (manager, admin, neei)")
+@app_commands.describe(grupo="O grupo cujas logs queres ver (manager, admin, neei, . para todos)", pagina="Número da página (padrão 1)")
 @app_commands.choices(grupo=[
     app_commands.Choice(name="Managers", value="manager"),
     app_commands.Choice(name="Admins", value="admin"),
     app_commands.Choice(name="NEEI", value="neei"),
+    app_commands.Choice(name="All", value="."),
 ])
-async def logs_command(interaction: discord.Interaction, grupo: str):
+async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int = 1):
     if not user_is_admin_or_manager(interaction):
         await interaction.response.send_message("❌ Não tens permissão para usar este comando.", ephemeral=True)
         return
 
     # Mapear o valor para o nome para apresentação
-    group_names = {"manager": "Managers", "admin": "Admins", "neei": "NEEI"}
+    group_names = {"manager": "Managers", "admin": "Admins", "neei": "NEEI", ".": "All"}
     # Em discord.py 2.x, grupo pode vir como str ou Choice dependendo do type hint.
     # Por segurança, caso venha como Choice, extraímos o value:
     group_val = getattr(grupo, "value", grupo)
@@ -764,6 +765,7 @@ async def logs_command(interaction: discord.Interaction, grupo: str):
         await interaction.response.send_message(f"📋 Não existem logs para a categoria **{group_name}**.", ephemeral=False)
         return
         
+    # Build all lines (most recent first)
     lines = []
     for log in reversed(filtered_logs):
         dt = datetime.datetime.fromisoformat(log["timestamp"]).strftime("%d/%m %H:%M")
@@ -771,23 +773,28 @@ async def logs_command(interaction: discord.Interaction, grupo: str):
         target = f" -> <@{log['target_id']}>" if log.get("target_id") else ""
         details = f" ({log['details']})" if log.get("details") else ""
         action = f"**{log['action']}**"
-        
         line = f"`[{dt}]` {actor} {action}{target}{details}"
         lines.append(line)
-        
+    
+    # Pagination (25 linhas por página)
+    try:
+        page = int(pagina)
+    except:
+        page = 1
+    if page < 1:
+        page = 1
+    total_pages = (len(lines) + 24) // 25 or 1
+    if page > total_pages:
+        page = total_pages
+    start_idx = (page - 1) * 25
+    end_idx = start_idx + 25
+    page_lines = lines[start_idx:end_idx]
+    
     embed = discord.Embed(
-        title=f"📋 Logs: {group_name}",
+        title=f"📋 Logs: {group_name} (página {page}/{total_pages})",
         color=discord.Color.light_grey()
     )
-    
-    description = ""
-    for line in lines:
-        if len(description) + len(line) + 2 > 4000:
-            description += "\n*... e mais.*"
-            break
-        description += line + "\n"
-        
-    embed.description = description
+    embed.description = "\n".join(page_lines)
     
     await interaction.response.send_message(embed=embed, ephemeral=False)
 
