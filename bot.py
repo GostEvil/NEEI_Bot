@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+import datetime
 
 import config
 import data_manager
@@ -42,6 +43,18 @@ def user_has_neei_role(interaction: discord.Interaction) -> bool:
     """Verifica se o utilizador tem o cargo NEEI no servidor."""
     role_name = config.get_neei_role_name()
     return any(role.name == role_name for role in interaction.user.roles)
+
+
+def get_user_role(interaction: discord.Interaction) -> str:
+    """Retorna o nível de permissão do utilizador associado à interação."""
+    uid = str(interaction.user.id)
+    if config.is_manager(uid):
+        return "manager"
+    elif data_manager.is_admin(uid):
+        return "admin"
+    elif user_has_neei_role(interaction):
+        return "neei"
+    return "user"
 
 
 async def get_verify_role(guild: discord.Guild) -> discord.Role | None:
@@ -109,6 +122,7 @@ async def neeigive(interaction: discord.Interaction, user: discord.Member):
     # 4. Atribuir a role
     try:
         await user.add_roles(role, reason=f"Atribuído por {interaction.user} via /neeigive")
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "neeigive", str(user.id), "Atribuiu cargo NEEI")
         await interaction.response.send_message(
             f"✅ Cargo **{role.name}** atribuído com sucesso a {user.mention}!"
         )
@@ -160,6 +174,7 @@ async def neeiremove(interaction: discord.Interaction, user: discord.Member):
     # 4. Remover a role
     try:
         await user.remove_roles(role, reason=f"Removido por {interaction.user} via /neeiremove")
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "neeiremove", str(user.id), "Removeu cargo NEEI")
         await interaction.response.send_message(
             f"✅ Cargo **{role.name}** removido com sucesso de {user.mention}."
         )
@@ -215,6 +230,7 @@ async def admingive(interaction: discord.Interaction, user: discord.Member):
         f"✅ {user.mention} foi adicionado como **Admin** do bot com sucesso!\n"
         f"Agora pode usar `/neeigive` e `/neeiremove`."
     )
+    data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "admingive", str(user.id), "Adicionou como Admin")
 
 
 @bot.tree.command(
@@ -253,6 +269,7 @@ async def adminremove(interaction: discord.Interaction, user: discord.Member):
     await interaction.response.send_message(
         f"✅ Permissões de **Admin** do bot removidas de {user.mention} com sucesso."
     )
+    data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "adminremove", str(user.id), "Removeu Admin")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -290,6 +307,7 @@ async def verify(interaction: discord.Interaction, user: discord.Member):
 
     try:
         await user.add_roles(role, reason=f"Verificado por {interaction.user} via /verify")
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "verify", str(user.id), "Verificou utilizador")
         await interaction.response.send_message(
             f"✅ O cargo **{role.name}** foi atribuído a {user.mention} com sucesso!"
         )
@@ -333,6 +351,7 @@ async def unverify(interaction: discord.Interaction, user: discord.Member):
 
     try:
         await user.remove_roles(role, reason=f"Removido por {interaction.user} via /unverify")
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "unverify", str(user.id), "Removeu verificação")
         await interaction.response.send_message(
             f"✅ A verificação foi removida de {user.mention}."
         )
@@ -361,6 +380,7 @@ async def config_command(interaction: discord.Interaction, role: discord.Role):
 
     try:
         config.set_verify_role_id(role.id)
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "config", None, f"Configurou cargo verificação para {role.id}")
         await interaction.response.send_message(
             f"✅ O cargo de verificação foi configurado para **{role.mention}** com sucesso!"
         )
@@ -636,6 +656,7 @@ async def sayimage(
 
     # 5. Enviar apenas a imagem no canal de destino
     await target_channel.send(file=image_file)
+    data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "sayimage", None, "Enviou imagem como bot")
 
     # 6. Responder de forma privada (ephemeral) confirmando o envio
     await interaction.response.send_message(
@@ -676,6 +697,7 @@ async def delete_messages(interaction: discord.Interaction, quantidade: int):
     await interaction.response.defer(ephemeral=True)
     try:
         deleted = await interaction.channel.purge(limit=quantidade)
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "delete", None, f"Eliminou {len(deleted)} mensagens")
         await interaction.followup.send(
             f"✅ Foram eliminadas **{len(deleted)}** mensagens com sucesso!",
             ephemeral=True
@@ -690,6 +712,78 @@ async def delete_messages(interaction: discord.Interaction, quantidade: int):
             f"❌ Ocorreu um erro: `{e}`",
             ephemeral=True
         )
+
+
+# ─────────────────────────────────────────────────────────────
+# Comando: Logs (/logs)
+# ─────────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="logs",
+    description="Mostra as logs de ações feitas ou relativas a um grupo (manager, admin, neei). (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(grupo="O grupo cujas logs queres ver (manager, admin, neei)")
+@app_commands.choices(grupo=[
+    app_commands.Choice(name="Managers", value="manager"),
+    app_commands.Choice(name="Admins", value="admin"),
+    app_commands.Choice(name="NEEI", value="neei"),
+])
+async def logs_command(interaction: discord.Interaction, grupo: app_commands.Choice[str]):
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message("❌ Não tens permissão para usar este comando.", ephemeral=True)
+        return
+
+    logs = data_manager.get_logs()
+    filtered_logs = []
+    
+    group_val = grupo.value
+    
+    for log in logs:
+        match = False
+        if group_val == "manager":
+            if log["actor_role"] == "manager":
+                match = True
+        elif group_val == "admin":
+            if log["actor_role"] == "admin" or log["action"] in ["admingive", "adminremove"]:
+                match = True
+        elif group_val == "neei":
+            if log["actor_role"] == "neei" or log["action"] in ["neeigive", "neeiremove"]:
+                match = True
+        
+        if match:
+            filtered_logs.append(log)
+            
+    if not filtered_logs:
+        await interaction.response.send_message(f"📋 Não existem logs para a categoria **{grupo.name}**.", ephemeral=True)
+        return
+        
+    lines = []
+    for log in reversed(filtered_logs):
+        dt = datetime.datetime.fromisoformat(log["timestamp"]).strftime("%d/%m %H:%M")
+        actor = f"<@{log['actor_id']}>"
+        target = f" -> <@{log['target_id']}>" if log.get("target_id") else ""
+        details = f" ({log['details']})" if log.get("details") else ""
+        action = f"**{log['action']}**"
+        
+        line = f"`[{dt}]` {actor} {action}{target}{details}"
+        lines.append(line)
+        
+    embed = discord.Embed(
+        title=f"📋 Logs: {grupo.name}",
+        color=discord.Color.light_grey()
+    )
+    
+    description = ""
+    for line in lines:
+        if len(description) + len(line) + 2 > 4000:
+            description += "\n*... e mais.*"
+            break
+        description += line + "\n"
+        
+    embed.description = description
+    
+    await interaction.response.send_message(embed=embed)
 
 
 # ─────────────────────────────────────────────────────────────
