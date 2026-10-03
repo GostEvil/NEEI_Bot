@@ -54,6 +54,22 @@ def get_verify_role_id() -> int | None:
     return None
 
 
+def get_certificate_verification_channel_id() -> int | None:
+    """Retorna o ID do canal onde o comando /verificacao1 pode ser usado (opcional)."""
+    channel_id = os.getenv("CERTIFICATE_VERIFICATION_CHANNEL_ID", "").strip()
+    if channel_id and channel_id.isdigit():
+        return int(channel_id)
+    return None
+
+
+def get_certificate_verification_log_channel_id() -> int | None:
+    """Retorna o ID do canal privado de logs da Verificação 1."""
+    channel_id = os.getenv("CERTIFICATE_VERIFICATION_LOG_CHANNEL_ID", "").strip()
+    if channel_id and channel_id.isdigit():
+        return int(channel_id)
+    return None
+
+
 def set_verify_role_id(role_id: int):
     """Define o ID do cargo de verificação no .env."""
     from dotenv import set_key, find_dotenv

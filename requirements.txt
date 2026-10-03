@@ -1,2 +1,12 @@
 discord.py>=2.3.0
 python-dotenv>=1.0.0
+
+# ── Verificação 1 — Certificado Multiusos ────────────────────────────────────
+# Extracção de texto de PDFs
+pypdf>=4.0.0
+# Converter páginas de PDF para imagem (requer Poppler instalado no sistema)
+pdf2image>=1.17.0
+# OCR (requer Tesseract-OCR instalado no sistema)
+pytesseract>=0.3.10
+# Manipulação de imagens
+Pillow>=10.0.0
