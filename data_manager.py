@@ -6,6 +6,7 @@ from pathlib import Path
 # Caminho para o ficheiro de dados dos admins
 ADMINS_FILE = Path("data/admins.json")
 LOGS_FILE = Path("data/logs.json")
+CERT_CONFIG_FILE = Path("data/cert_config.json")
 
 
 def _ensure_file():
@@ -93,3 +94,85 @@ def get_logs() -> list[dict]:
         return json.loads(LOGS_FILE.read_text(encoding="utf-8"))
     except Exception:
         return []
+
+
+# ─────────────────────────────────────────────────────────────
+# Configuração da Verificação 1 (anos letivos + canal de alerta)
+# ─────────────────────────────────────────────────────────────
+
+_CERT_CONFIG_DEFAULT = {"allowed_years": [], "alert_channel_id": None}
+
+
+def _ensure_cert_config_file() -> None:
+    """Garante que o ficheiro de configuração de certificados existe."""
+    CERT_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not CERT_CONFIG_FILE.exists():
+        CERT_CONFIG_FILE.write_text(
+            json.dumps(_CERT_CONFIG_DEFAULT, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+
+def _load_cert_config() -> dict:
+    """Carrega a configuração de certificados do ficheiro."""
+    _ensure_cert_config_file()
+    try:
+        data = json.loads(CERT_CONFIG_FILE.read_text(encoding="utf-8"))
+        # Garantir chaves esperadas mesmo que o ficheiro seja antigo
+        data.setdefault("allowed_years", [])
+        data.setdefault("alert_channel_id", None)
+        return data
+    except Exception:
+        return dict(_CERT_CONFIG_DEFAULT)
+
+
+def _save_cert_config(data: dict) -> None:
+    """Guarda a configuração de certificados no ficheiro."""
+    _ensure_cert_config_file()
+    CERT_CONFIG_FILE.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def get_allowed_years() -> list[str]:
+    """Retorna a lista de anos letivos permitidos (ex: ['2025/2026', '2026/2027'])."""
+    return _load_cert_config()["allowed_years"]
+
+
+def add_allowed_year(year: str) -> bool:
+    """
+    Adiciona um ano letivo à lista de anos permitidos.
+    Retorna True se adicionado, False se já existia.
+    """
+    data = _load_cert_config()
+    if year in data["allowed_years"]:
+        return False
+    data["allowed_years"].append(year)
+    _save_cert_config(data)
+    return True
+
+
+def remove_allowed_year(year: str) -> bool:
+    """
+    Remove um ano letivo da lista de anos permitidos.
+    Retorna True se removido, False se não existia.
+    """
+    data = _load_cert_config()
+    if year not in data["allowed_years"]:
+        return False
+    data["allowed_years"].remove(year)
+    _save_cert_config(data)
+    return True
+
+
+def get_cert_alert_channel_id() -> int | None:
+    """Retorna o ID do canal de alerta para certificados com ano inválido."""
+    raw = _load_cert_config()["alert_channel_id"]
+    return int(raw) if raw else None
+
+
+def set_cert_alert_channel_id(channel_id: int | None) -> None:
+    """Define o ID do canal de alerta para certificados com ano inválido."""
+    data = _load_cert_config()
+    data["alert_channel_id"] = channel_id
+    _save_cert_config(data)

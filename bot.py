@@ -806,6 +806,145 @@ async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int
 
 
 # ─────────────────────────────────────────────────────────────
+# Comandos: Configuração da Verificação 1 (/certconfig)
+# ─────────────────────────────────────────────────────────────
+
+cert_config_group = app_commands.Group(
+    name="certconfig",
+    description="Configuração da Verificação 1 — anos letivos e canal de alerta. (Apenas Managers)",
+)
+bot.tree.add_command(cert_config_group, guild=guild_obj)
+
+
+@cert_config_group.command(
+    name="addyear",
+    description="Adiciona um ano letivo aceite na Verificação 1. (Apenas Managers)",
+)
+@app_commands.describe(ano="Ano letivo no formato AAAA/AAAA (ex: 2025/2026)")
+async def certconfig_addyear(interaction: discord.Interaction, ano: str):
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.", ephemeral=True
+        )
+        return
+
+    import re
+    if not re.fullmatch(r"\d{4}/\d{4}", ano.strip()):
+        await interaction.response.send_message(
+            "⚠️ Formato inválido. Usa o formato `AAAA/AAAA` (ex: `2025/2026`).",
+            ephemeral=True,
+        )
+        return
+
+    year = ano.strip()
+    added = data_manager.add_allowed_year(year)
+    if not added:
+        await interaction.response.send_message(
+            f"⚠️ O ano letivo **{year}** já está na lista.", ephemeral=True
+        )
+        return
+
+    data_manager.add_log(
+        str(interaction.user.id), get_user_role(interaction),
+        "certconfig_addyear", None, f"Adicionou ano letivo: {year}"
+    )
+    years = data_manager.get_allowed_years()
+    await interaction.response.send_message(
+        f"✅ Ano letivo **{year}** adicionado.\n"
+        f"Anos aceites atualmente: **{', '.join(years)}**"
+    )
+
+
+@cert_config_group.command(
+    name="removeyear",
+    description="Remove um ano letivo da lista de anos aceites. (Apenas Managers)",
+)
+@app_commands.describe(ano="Ano letivo a remover (ex: 2025/2026)")
+async def certconfig_removeyear(interaction: discord.Interaction, ano: str):
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.", ephemeral=True
+        )
+        return
+
+    year = ano.strip()
+    removed = data_manager.remove_allowed_year(year)
+    if not removed:
+        await interaction.response.send_message(
+            f"⚠️ O ano letivo **{year}** não está na lista.", ephemeral=True
+        )
+        return
+
+    data_manager.add_log(
+        str(interaction.user.id), get_user_role(interaction),
+        "certconfig_removeyear", None, f"Removeu ano letivo: {year}"
+    )
+    years = data_manager.get_allowed_years()
+    anos_str = ", ".join(years) if years else "*nenhum — verificação de ano desativada*"
+    await interaction.response.send_message(
+        f"✅ Ano letivo **{year}** removido.\n"
+        f"Anos aceites atualmente: **{anos_str}**"
+    )
+
+
+@cert_config_group.command(
+    name="listyears",
+    description="Mostra os anos letivos aceites na Verificação 1.",
+)
+async def certconfig_listyears(interaction: discord.Interaction):
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.", ephemeral=True
+        )
+        return
+
+    years = data_manager.get_allowed_years()
+    alert_ch_id = data_manager.get_cert_alert_channel_id()
+    alert_ch_str = f"<#{alert_ch_id}>" if alert_ch_id else "*não configurado*"
+
+    embed = discord.Embed(
+        title="⚙️ Configuração da Verificação 1",
+        color=discord.Color.blue(),
+    )
+    embed.add_field(
+        name="📅 Anos Letivos Aceites",
+        value="\n".join(f"• **{y}**" for y in years) if years
+              else "*Nenhum configurado — verificação de ano desativada.*",
+        inline=False,
+    )
+    embed.add_field(
+        name="🔔 Canal de Alerta (ano inválido)",
+        value=alert_ch_str,
+        inline=False,
+    )
+    embed.set_footer(text="Use /certconfig addyear e /certconfig alertchannel para configurar.")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@cert_config_group.command(
+    name="alertchannel",
+    description="Define o canal de alerta para certificados com ano letivo inválido. (Apenas Managers)",
+)
+@app_commands.describe(canal="Canal onde os alertas de ano inválido serão enviados")
+async def certconfig_alertchannel(interaction: discord.Interaction, canal: discord.TextChannel):
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.", ephemeral=True
+        )
+        return
+
+    data_manager.set_cert_alert_channel_id(canal.id)
+    data_manager.add_log(
+        str(interaction.user.id), get_user_role(interaction),
+        "certconfig_alertchannel", None, f"Definiu canal de alerta: {canal.id}"
+    )
+    await interaction.response.send_message(
+        f"✅ Canal de alerta configurado para {canal.mention}.\n"
+        "Quando alguém enviar um certificado com ano letivo inválido, será enviado um alerta aqui."
+    )
+
+
+# ─────────────────────────────────────────────────────────────
 # Arranque do Bot
 # ─────────────────────────────────────────────────────────────
 

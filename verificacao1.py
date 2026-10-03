@@ -25,6 +25,7 @@ import discord
 from discord import app_commands
 
 import config
+import data_manager
 from verification.certificate import verify_certificate
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,9 @@ async def _handle_verificacao1(
     # ephemeral=False para que a resposta final seja visível no canal
     await interaction.response.defer(thinking=True)
 
+    # Carregar anos letivos permitidos
+    allowed_years = data_manager.get_allowed_years()  # lista vazia = sem restrição de ano
+
     # Processar o attachment
     try:
         file_bytes = await attachment.read()
@@ -89,6 +93,7 @@ async def _handle_verificacao1(
             file_bytes=file_bytes,
             filename=attachment.filename,
             mime_type=mime_type,
+            allowed_years=allowed_years or None,
         )
     except Exception as exc:
         logger.exception("Erro inesperado ao processar attachment: %s", exc)
@@ -103,6 +108,12 @@ async def _handle_verificacao1(
         member = interaction.guild.get_member(interaction.user.id)
         if member:
             await _apply_nickname(interaction, member, result["nickname"])
+    elif result.get("year_mismatch"):
+        # Certificado válido, mas ano letivo não é aceite
+        await _send_failure_response(interaction)
+        await _send_year_mismatch_alert(interaction, result)
+        await _send_private_log(interaction, result, success=False,
+                                failure_reason=result.get("reason"))
     else:
         reason = result.get("reason", "Não foi possível validar o certificado.")
         await _send_failure_response(interaction)
@@ -148,6 +159,67 @@ async def _send_failure_response(
         await interaction.followup.send(embed=embed)
     except Exception as exc:
         logger.warning("Não foi possível enviar resposta de falha: %s", exc)
+
+
+async def _send_year_mismatch_alert(
+    interaction: discord.Interaction,
+    result: dict,
+) -> None:
+    """
+    Envia um alerta para o canal configurado quando o utilizador envia um certificado
+    cujo ano letivo não está na lista de anos aceites.
+
+    O canal de alerta é configurado pelo manager via /certconfig alertchannel.
+    """
+    alert_channel_id = data_manager.get_cert_alert_channel_id()
+    if not alert_channel_id:
+        logger.warning(
+            "Canal de alerta de ano inválido não configurado (use /certconfig alertchannel)."
+        )
+        return
+
+    alert_channel = interaction.guild.get_channel(alert_channel_id)
+    if alert_channel is None:
+        try:
+            alert_channel = await interaction.guild.fetch_channel(alert_channel_id)
+        except Exception as exc:
+            logger.error("Não foi possível encontrar o canal de alerta (ID: %s): %s",
+                         alert_channel_id, exc)
+            return
+
+    cert_year = result.get("academic_year") or "desconhecido"
+    allowed = data_manager.get_allowed_years()
+    allowed_str = ", ".join(allowed) if allowed else "nenhum configurado"
+
+    embed = discord.Embed(
+        title="⚠️ Tentativa com Certificado de Ano Inválido",
+        description=(
+            f"{interaction.user.mention} tentou verificar-se com um certificado "
+            f"do ano letivo **{cert_year}**, que não está na lista de anos aceites."
+        ),
+        color=discord.Color.orange(),
+        timestamp=datetime.datetime.now(datetime.timezone.utc),
+    )
+    embed.add_field(
+        name="Utilizador",
+        value=f"{interaction.user.mention}\nID: `{interaction.user.id}`",
+        inline=True,
+    )
+    embed.add_field(name="Ano no Certificado", value=f"`{cert_year}`", inline=True)
+    embed.add_field(name="Anos Aceites", value=f"`{allowed_str}`", inline=True)
+    if result.get("name"):
+        embed.add_field(name="Nome (extraído)", value=result["name"], inline=True)
+    if result.get("mechanographic_number"):
+        embed.add_field(name="Nº Mecanográfico", value=result["mechanographic_number"], inline=True)
+    embed.set_footer(text=f"Canal: #{interaction.channel}")
+
+    try:
+        await alert_channel.send(embed=embed)
+        logger.info("Alerta de ano inválido enviado para canal #%s.", alert_channel_id)
+    except discord.Forbidden:
+        logger.error("Sem permissão para enviar no canal de alerta (ID: %s).", alert_channel_id)
+    except Exception as exc:
+        logger.error("Erro ao enviar alerta de ano inválido: %s", exc)
 
 
 async def _apply_nickname(
@@ -253,10 +325,13 @@ async def _send_private_log(
             value=result.get("identification_document", "—"),
             inline=True,
         )
+        embed.add_field(name="Ano Letivo", value=result.get("academic_year", "—"), inline=True)
         embed.add_field(name="Curso", value=result.get("course", "—"), inline=True)
         embed.add_field(name="Instituição", value=result.get("institution", "—"), inline=True)
         embed.add_field(name="Nickname Atribuído", value=result.get("nickname", "—"), inline=True)
     else:
+        if result.get("academic_year"):
+            embed.add_field(name="Ano no Certificado", value=result["academic_year"], inline=True)
         embed.add_field(
             name="Motivo da Rejeição",
             value=failure_reason or "Não especificado.",

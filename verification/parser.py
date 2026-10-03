@@ -5,6 +5,7 @@ Extrai:
 - Nome completo do aluno
 - Número mecanográfico (ex: a64716, 64716)
 - Número do documento de identificação
+- Ano letivo (ex: 2025/2026)
 
 A extracção usa regex adaptadas ao formato do certificado, com tolerância
 a variações de OCR.
@@ -33,6 +34,7 @@ class ParsedCertificate:
     name: Optional[str] = None
     mechanographic_number: Optional[str] = None
     identification_document: Optional[str] = None
+    academic_year: Optional[str] = None
     course: str = "Engenharia Informática"
     institution: str = "Instituto Politécnico de Bragança"
 
@@ -79,6 +81,16 @@ _NAME_PATTERNS = [
     r"(?:o\s+estudante|the\s+student)\s+[\"«»]?([A-ZÀ-Ž][a-zA-ZÀ-ž\s]{5,60}?)(?:[\"«»]?[\s,])",
 ]
 
+# Padrões para o ano letivo
+# PT: "no ano letivo 2025/2026"
+# EN: "in the academic year 2025/2026" ou "academic year 2025/2026"
+_YEAR_PATTERNS = [
+    r"(?:ano\s+letivo|ano\s+acad[eé]mico)\s+(\d{4}/\d{4})",
+    r"(?:academic\s+year)\s+(\d{4}/\d{4})",
+    # fallback genérico: qualquer par AAAA/AAAA no documento
+    r"\b(\d{4}/\d{4})\b",
+]
+
 
 # ─── Funções Públicas ──────────────────────────────────────────────────────────
 
@@ -102,12 +114,14 @@ def parse_certificate(text: str) -> ParsedCertificate:
     result.name = _extract_name(text, normalized)
     result.mechanographic_number = _extract_mechanographic_number(text, normalized)
     result.identification_document = _extract_identification_document(text, normalized)
+    result.academic_year = _extract_academic_year(text, normalized)
 
     logger.info(
-        "Parsing concluído — nome: %s | mech: %s | id_doc: %s",
+        "Parsing concluído — nome: %s | mech: %s | id_doc: %s | ano: %s",
         bool(result.name),
         bool(result.mechanographic_number),
         bool(result.identification_document),
+        result.academic_year or "n/a",
     )
     return result
 
@@ -222,4 +236,25 @@ def _extract_identification_document(original_text: str, normalized: str) -> Opt
             logger.warning("Erro no padrão de ID '%s': %s", pattern[:30], exc)
 
     logger.warning("Documento de identificação não encontrado.")
+    return None
+
+
+def _extract_academic_year(original_text: str, normalized: str) -> Optional[str]:
+    """
+    Extrai o ano letivo do certificado (ex: "2025/2026").
+
+    Tenta padrões contextuais primeiro ("ano letivo AAAA/AAAA"),
+    depois um padrão genérico de fallback.
+    """
+    for pattern in _YEAR_PATTERNS:
+        try:
+            match = re.search(pattern, normalized, re.IGNORECASE)
+            if match:
+                year = match.group(1).strip()
+                logger.debug("Ano letivo encontrado: '%s'", year)
+                return year
+        except re.error as exc:
+            logger.warning("Erro no padrão de ano '%s': %s", pattern[:30], exc)
+
+    logger.warning("Ano letivo não encontrado no documento.")
     return None
