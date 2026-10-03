@@ -14,7 +14,6 @@ from verificacao1 import register_verificacao1
 
 intents = discord.Intents.default()
 intents.members = True  # Necessário para gerir membros e roles
-intents.message_content = True  # Necessário para ler mensagens (wait_for na Verificação 1)
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 guild_obj = discord.Object(id=config.get_guild_id())
