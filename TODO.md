@@ -85,7 +85,7 @@ Após uma Verificação 1 bem-sucedida, os seguintes dados ficam disponíveis no
 |-------|-----------|
 | `discord_user_id` | ID Discord do utilizador |
 | `name` | Nome completo extraído do certificado |
-| `mechanographic_number` | Número mecanográfico (ex: `a63426`) |
+| `mechanographic_number` | Número mecanográfico (ex: `a12345`) |
 | `identification_document` | Número do documento de identificação |
 | `course` | Curso (`Engenharia Informática`) |
 | `institution` | Instituição (`Instituto Politécnico de Bragança`) |
@@ -129,11 +129,11 @@ Para a integração futura, estes dados deverão ser persistidos numa base de da
 {
     "valid": True,
     "name": "Nuno Silva",
-    "mechanographic_number": "a63426",
+    "mechanographic_number": "a12345",
     "identification_document": "12345678",
     "course": "Engenharia Informática",
     "institution": "Instituto Politécnico de Bragança",
-    "nickname": "Nuno Silva (a63426)"
+    "nickname": "Nuno Silva (a12345)"
 }
 
 # Em caso de falha:
@@ -145,4 +145,4 @@ Para a integração futura, estes dados deverão ser persistidos numa base de da
 
 ---
 
-*Última actualização: 2026-10-03*
+*Última actualização: 2026-10-04*
