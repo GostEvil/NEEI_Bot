@@ -104,10 +104,11 @@ async def _handle_verificacao1(
         await _send_success_response(interaction, result)
         await _send_private_log(interaction, result, success=True)
 
-        # Alterar nickname do membro
+        # Alterar nickname e atribuir cargo de verificação
         member = interaction.guild.get_member(interaction.user.id)
         if member:
             await _apply_nickname(interaction, member, result["nickname"])
+            await _apply_verify_role(interaction, member)
     elif result.get("year_mismatch"):
         # Certificado válido, mas ano letivo não é aceite
         await _send_failure_response(interaction)

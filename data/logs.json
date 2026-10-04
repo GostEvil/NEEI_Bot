@@ -54,5 +54,29 @@
     "action": "delete",
     "target_id": null,
     "details": "Eliminou 10 mensagens"
+  },
+  {
+    "timestamp": "2026-10-03T23:57:27.619486",
+    "actor_id": "404599016194572291",
+    "actor_role": "manager",
+    "action": "config",
+    "target_id": null,
+    "details": "Configurou cargo verificação para 1555690332488867900"
+  },
+  {
+    "timestamp": "2026-10-03T23:58:48.867468",
+    "actor_id": "404599016194572291",
+    "actor_role": "manager",
+    "action": "certconfig_addyear",
+    "target_id": null,
+    "details": "Adicionou ano letivo: 2026/2027"
+  },
+  {
+    "timestamp": "2026-10-04T00:00:16.586728",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "certconfig_alertchannel",
+    "target_id": null,
+    "details": "Definiu canal de alerta: 1425119134059855974"
   }
 ]
