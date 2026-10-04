@@ -128,7 +128,7 @@ Para a integração futura, estes dados deverão ser persistidos numa base de da
 # Resultado interno após verify_certificate() com sucesso:
 {
     "valid": True,
-    "name": "Nuno Miguel Silva",
+    "name": "Nuno Silva",
     "mechanographic_number": "a63426",
     "identification_document": "12345678",
     "course": "Engenharia Informática",
