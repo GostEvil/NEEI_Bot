@@ -29,6 +29,8 @@ NEEI_Bot/
 | `/neeiremove @user` | Remove a role NEEI do utilizador | Admins + Managers |
 | `/admingive @user` | Dá permissões de Admin do bot | Apenas Managers |
 | `/adminremove @user` | Remove permissões de Admin do bot | Apenas Managers |
+| `/verificacao1 @user` | Dá permissões de Admin do bot | Apenas Managers |
+| `/verificacao1 @user` | Remove permissões de Admin do bot | Apenas Managers |
 
 ---
 
