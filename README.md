@@ -1,6 +1,7 @@
 # NEEI Bot 🤖
 
-Bot de Discord para gestão do cargo **NEEI** com sistema de permissões internas em 3 níveis.
+Bot de Discord para gestão do cargo **NEEI** com sistema de permissões internas.
+Único bot que membros do NEEI tem acesso, o resto do **servidor foi feito por estudantes, para estudantes**
 
 ---
 
