@@ -30,7 +30,8 @@ NEEI_Bot/
 | `/admingive @user` | Dá permissões de Admin do bot | Apenas Managers |
 | `/adminremove @user` | Remove permissões de Admin do bot | Apenas Managers |
 | `/verificacao1 @user` | Submeter certificado para obter verificacao1 | All |
-| `/logs` | Ver as logs de cargos | Admin + Manager
+| `/logs` | Ver as logs de cargos | Admin + Manager | 
+| `/neei`| Mostra as pessoas que se encontram no Nucleo (tags, nome, numMeca)| All |
 
 ---
 
