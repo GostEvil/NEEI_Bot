@@ -5,23 +5,6 @@ Bot de Discord para gestão do cargo **NEEI** com sistema de permissões interna
 
 ---
 
-## Estrutura do Projeto
-
-```
-NEEI_Bot/
-├── bot.py            # Ficheiro principal do bot (todos os comandos)
-├── config.py         # Carregamento de variáveis de ambiente (.env)
-├── data_manager.py   # Persistência dos admins (admins.json)
-├── requirements.txt  # Dependências Python
-├── .env              # Variáveis secretas (NÃO partilhar!)
-├── .env.example      # Exemplo do .env
-├── .gitignore
-└── data/
-    └── admins.json   # Criado automaticamente pelo bot
-```
-
----
-
 ## Comandos Disponíveis
 
 | Comando | Descrição | Quem pode usar |
@@ -36,8 +19,6 @@ NEEI_Bot/
 | `/neeigive`| Adicionar pessoa ao NEEI (add tag) | Admin |
 | `/neeiremove`| Remover pessoa do NEEI (remove tag) | Admin |
 
----
-
 ## Hierarquia de Permissões
 
 ```
@@ -50,8 +31,6 @@ Admins (geridos via /admingive)
 Utilizadores Normais
   └─▶ /neei
 ```
-
----
 
 ## Notas Importantes
 
