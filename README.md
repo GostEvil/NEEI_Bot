@@ -66,11 +66,12 @@ cp .env.example .env
 ```
 
 ```env
-DISCORD_TOKEN=o_teu_token_aqui
-CLIENT_ID=o_teu_client_id_aqui
-GUILD_ID=o_id_do_teu_servidor_aqui
-MANAGER_IDS=teu_user_id,outro_manager_user_id
+DISCORD_TOKEN=
+CLIENT_ID=
+GUILD_ID=
+MANAGER_IDS=
 NEEI_ROLE_NAME=NEEI
+CERTIFICATE_VERIFICATION_LOG_CHANNEL_ID=
 ```
 
 ### 3. Como obter os IDs necessários
