@@ -47,7 +47,7 @@ Admins (geridos via /admingive)
   └─▶ /neeigive, /neeiremove
 
 Utilizadores Normais
-  └─▶ (sem acesso a comandos do bot)
+  └─▶ /neei
 ```
 
 ---
