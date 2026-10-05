@@ -34,6 +34,6 @@ Utilizadores Normais
 
 ## Notas Importantes
 
-- As mensagens de erro são **efémeras** (apenas visíveis para quem executou o comando).
+- As mensagens de erro são apenas visíveis para quem executou o comando.
 - A lista de Admins é guardada automaticamente em `data/admins.json`.
 - Para adicionar/remover Managers, edita diretamente o `.env` e reinicia o bot.
