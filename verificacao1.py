@@ -268,6 +268,55 @@ async def _apply_nickname(
         logger.error("Erro HTTP ao alterar nickname de %s: %s", member.name, exc)
 
 
+async def _apply_verify_role(
+    interaction: discord.Interaction,
+    member: discord.Member,
+) -> None:
+    """
+    Atribui ao membro o cargo de verificação configurado via /config.
+
+    Trata graciosamente:
+    - cargo não configurado ou já inexistente no servidor
+    - falta de permissão do bot / hierarquia de cargos
+    - membro já ter o cargo
+    """
+    role_id = config.get_verify_role_id()
+    if not role_id:
+        logger.warning("Cargo de verificação não configurado (use /config).")
+        return
+
+    role = interaction.guild.get_role(role_id)
+    if role is None:
+        logger.error("Cargo de verificação (ID: %s) não encontrado no servidor.", role_id)
+        return
+
+    if role in member.roles:
+        logger.info("%s (%s) já tem o cargo '%s'.", member.name, member.id, role.name)
+        return
+
+    try:
+        await member.add_roles(role, reason="Verificação 1 — Certificado Multiusos IPB")
+        logger.info("Cargo '%s' atribuído a %s (%s).", role.name, member.name, member.id)
+    except discord.Forbidden:
+        logger.warning(
+            "Sem permissão para atribuir o cargo '%s' a %s (%s). "
+            "Verificar hierarquia de cargos.",
+            role.name,
+            member.name,
+            member.id,
+        )
+        try:
+            await interaction.followup.send(
+                "⚠️ O certificado foi validado, mas o bot não tem permissão para "
+                "atribuir o cargo de verificação. Contacta um administrador.",
+                ephemeral=True,
+            )
+        except Exception:
+            pass
+    except discord.HTTPException as exc:
+        logger.error("Erro HTTP ao atribuir cargo a %s: %s", member.name, exc)
+
+
 async def _send_private_log(
     interaction: discord.Interaction,
     result: dict,

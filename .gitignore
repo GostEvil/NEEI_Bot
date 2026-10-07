@@ -18,6 +18,8 @@ __pycache__/
 
 # Logs
 *.log
+admins.json
+logs.json
 
 # IDE
 .vscode/
