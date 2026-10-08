@@ -126,7 +126,7 @@ def test_autocomplete_follows_semester():
         i = make_interaction("4")
         return [c.value for c in asyncio.run(bot.calendario_disciplina_autocomplete(i, cur))]
     assert "1103" in values("") and "1201" not in values("")
-    assert values("cálc") == ["1102"]
+    assert values("cálc") == ["ano:1", "1102"]
     dm.set_semester(2)
     assert "1201" in values("") and "1103" not in values("")
 
@@ -139,3 +139,15 @@ def test_configsemestre_managers_only_and_keeps_channel():
     asyncio.run(bot.configsemestre.callback(i, 2))
     assert dm.get_semester() == 2
     assert dm.get_calendar_channel_id() == 555
+
+
+def test_autocomplete_year_separators():
+    i = make_interaction("4")
+    names = [c.name for c in asyncio.run(bot.calendario_disciplina_autocomplete(i, ""))]
+    assert names[0] == "──── 1º ano ────"
+    assert names.index("──── 2º ano ────") == 6
+    assert names.index("──── 3º ano ────") == 12
+    names = [c.name for c in asyncio.run(bot.calendario_disciplina_autocomplete(i, "cálc"))]
+    assert names == ["──── 1º ano ────", "Cálculo"]
+    i = run("2", "add", "teste", "ano:1", "25/01/2027")
+    assert "separador" in text(i)

@@ -1037,6 +1037,8 @@ async def certconfig_alertchannel(interaction: discord.Interaction, canal: disco
 # Comando: Calendário de avaliações (/calendario)
 # ─────────────────────────────────────────────────────────────
 
+SEPARATOR_PREFIX = "ano:"
+
 CALENDAR_KINDS = {
     "teste": "Teste",
     "trabalho": "Trabalho",
@@ -1093,6 +1095,12 @@ async def calendario(
     semester = data_manager.get_semester()
     # Adicionar: só disciplinas do semestre ativo. Remover: qualquer disciplina conhecida
     # (para ainda se poderem limpar eventos de um semestre anterior).
+    if subject.startswith(SEPARATOR_PREFIX):
+        await interaction.response.send_message(
+            "⚠️ Isso é só um separador de ano. Escolhe uma disciplina por baixo dele.",
+            ephemeral=True,
+        )
+        return
     valid = SUBJECTS if tipo == "remove" else subjects_for_semester(semester)
     if subject not in valid:
         await interaction.response.send_message(
@@ -1160,11 +1168,20 @@ async def calendario_disciplina_autocomplete(
     """Sugere as disciplinas do semestre ativo (por nome)."""
     term = current.strip().lower()
     subjects = subjects_for_semester(data_manager.get_semester())
-    return [
-        app_commands.Choice(name=subject_label(code)[:100], value=code)
-        for code, name in subjects.items()
-        if term in name.lower()
-    ][:25]
+    choices: list[app_commands.Choice[str]] = []
+    for year in "123":
+        year_choices = [
+            app_commands.Choice(name=name[:100], value=code)
+            for code, name in subjects.items()
+            if code[0] == year and term in name.lower()
+        ]
+        if year_choices:
+            # Separador (o Discord não tem cabeçalhos; selecioná-lo é rejeitado no comando)
+            choices.append(
+                app_commands.Choice(name=f"──── {year}º ano ────", value=f"{SEPARATOR_PREFIX}{year}")
+            )
+            choices.extend(year_choices)
+    return choices[:25]
 
 
 @bot.tree.command(
