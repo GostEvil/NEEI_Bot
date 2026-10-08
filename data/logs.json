@@ -86,5 +86,21 @@
     "action": "sayimage",
     "target_id": null,
     "details": "Enviou imagem como bot"
+  },
+  {
+    "timestamp": "2026-10-08T18:47:36.656472",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "configcalendario",
+    "target_id": null,
+    "details": "Definiu canal do calendário: 1557808388069658664"
+  },
+  {
+    "timestamp": "2026-10-08T18:51:06.528947",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "calendario_add",
+    "target_id": null,
+    "details": "teste | DM | 2026-10-13"
   }
 ]
