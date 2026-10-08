@@ -5,6 +5,7 @@ import datetime
 
 import config
 import data_manager
+from subjects import SUBJECTS, subject_label, subjects_for_semester
 from verificacao1 import register_verificacao1
 
 
@@ -1049,13 +1050,13 @@ CALENDAR_KINDS = {
 
 @bot.tree.command(
     name="calendario",
-    description="Adiciona ou remove um evento do calendário. (Apenas Admins/Managers)",
+    description="Adiciona um evento ao calendário (todos) ou remove-o (NEEI+).",
     guild=guild_obj,
 )
 @app_commands.describe(
     tipo="Adicionar ou remover o evento",
     o_que="Tipo de avaliação",
-    disciplina="Nome da disciplina (ex: Programação)",
+    disciplina="Disciplina do semestre ativo (escreve para pesquisar)",
     data="Data no formato DD/MM/AAAA",
 )
 @app_commands.choices(
@@ -1072,9 +1073,10 @@ async def calendario(
     disciplina: str,
     data: str,
 ):
-    if not user_is_admin_or_manager(interaction):
+    if tipo == "remove" and get_user_role(interaction) == "user":
         await interaction.response.send_message(
-            "❌ Não tens permissão para usar este comando.", ephemeral=True
+            "❌ Apenas membros **NEEI**, Admins ou Managers podem remover eventos.",
+            ephemeral=True,
         )
         return
 
@@ -1088,9 +1090,14 @@ async def calendario(
         return
 
     subject = disciplina.strip()
-    if not subject:
+    semester = data_manager.get_semester()
+    # Adicionar: só disciplinas do semestre ativo. Remover: qualquer disciplina conhecida
+    # (para ainda se poderem limpar eventos de um semestre anterior).
+    valid = SUBJECTS if tipo == "remove" else subjects_for_semester(semester)
+    if subject not in valid:
         await interaction.response.send_message(
-            "⚠️ Indica o nome da disciplina.", ephemeral=True
+            f"⚠️ Disciplina inválida. Escolhe uma das sugestões do {semester}º semestre.",
+            ephemeral=True,
         )
         return
 
@@ -1105,7 +1112,7 @@ async def calendario(
         return
 
     label = CALENDAR_KINDS[o_que]
-    desc = f"{label} de **{subject}** em **{date.strftime('%d/%m/%Y')}**"
+    desc = f"{label} de **{subject_label(subject)}** em **{date.strftime('%d/%m/%Y')}**"
     if tipo == "add":
         ok = data_manager.add_calendar_event(o_que, subject, date.isoformat())
         if not ok:
@@ -1130,7 +1137,7 @@ async def calendario(
 
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="Tipo", value=label, inline=True)
-    embed.add_field(name="Disciplina", value=subject, inline=True)
+    embed.add_field(name="Disciplina", value=subject_label(subject), inline=True)
     embed.add_field(name="Data", value=date.strftime("%d/%m/%Y"), inline=True)
     embed.set_footer(text=f"Por {interaction.user.display_name}")
     try:
@@ -1143,6 +1150,47 @@ async def calendario(
         return
     await interaction.response.send_message(
         f"✅ Feito. Mensagem enviada para {channel.mention}.", ephemeral=True
+    )
+
+
+@calendario.autocomplete("disciplina")
+async def calendario_disciplina_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[app_commands.Choice[str]]:
+    """Sugere as disciplinas do semestre ativo (por código ou nome)."""
+    term = current.strip().lower()
+    subjects = subjects_for_semester(data_manager.get_semester())
+    return [
+        app_commands.Choice(name=subject_label(code)[:100], value=code)
+        for code, name in subjects.items()
+        if term in code or term in name.lower()
+    ][:25]
+
+
+@bot.tree.command(
+    name="configsemestre",
+    description="Define o semestre ativo do calendário (1 ou 2). (Apenas Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(qual="Semestre cujas disciplinas aparecem no /calendario")
+@app_commands.choices(qual=[
+    app_commands.Choice(name="1", value=1),
+    app_commands.Choice(name="2", value=2),
+])
+async def configsemestre(interaction: discord.Interaction, qual: int):
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.", ephemeral=True
+        )
+        return
+
+    data_manager.set_semester(qual)
+    data_manager.add_log(
+        str(interaction.user.id), get_user_role(interaction),
+        "configsemestre", None, f"Definiu semestre ativo: {qual}"
+    )
+    await interaction.response.send_message(
+        f"✅ Semestre ativo definido para o **{qual}º semestre**."
     )
 
 

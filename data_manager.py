@@ -285,5 +285,31 @@ def get_calendar_channel_id() -> int | None:
 
 def set_calendar_channel_id(channel_id: int | None) -> None:
     """Define o ID do canal onde o bot publica os eventos do calendário."""
+    _update_calendar_config(channel_id=channel_id)
+
+
+def _update_calendar_config(**changes) -> None:
+    """Atualiza chaves da config do calendário, preservando as restantes."""
+    try:
+        data = json.loads(CALENDAR_CONFIG_FILE.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            data = {}
+    except Exception:
+        data = {}
+    data.update(changes)
     CALENDAR_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write(CALENDAR_CONFIG_FILE, json.dumps({"channel_id": channel_id}, indent=2))
+    _atomic_write(CALENDAR_CONFIG_FILE, json.dumps(data, indent=2))
+
+
+def get_semester() -> int:
+    """Semestre ativo (1 ou 2) cujas disciplinas aparecem no /calendario. Por omissão, 1."""
+    try:
+        data = json.loads(CALENDAR_CONFIG_FILE.read_text(encoding="utf-8"))
+        return 2 if int(data.get("semester", 1)) == 2 else 1
+    except Exception:
+        return 1
+
+
+def set_semester(semester: int) -> None:
+    """Define o semestre ativo (1 ou 2)."""
+    _update_calendar_config(semester=semester)
