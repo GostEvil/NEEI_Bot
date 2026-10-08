@@ -78,5 +78,13 @@
     "action": "certconfig_alertchannel",
     "target_id": null,
     "details": "Definiu canal de alerta: 1425119134059855974"
+  },
+  {
+    "timestamp": "2026-10-08T17:14:57.156513",
+    "actor_id": "404599016194572291",
+    "actor_role": "manager",
+    "action": "sayimage",
+    "target_id": null,
+    "details": "Enviou imagem como bot"
   }
 ]

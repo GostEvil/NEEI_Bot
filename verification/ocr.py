@@ -144,7 +144,7 @@ def extract_text_from_pdf_ocr(file_path: str | Path) -> str:
 
     try:
         logger.info("Convertendo PDF para imagens para OCR: %s", file_path.name)
-        images = convert_from_path(str(file_path), dpi=200)
+        images = convert_from_path(str(file_path), dpi=200, last_page=MAX_PDF_PAGES)
 
         if len(images) > MAX_PDF_PAGES:
             logger.warning(

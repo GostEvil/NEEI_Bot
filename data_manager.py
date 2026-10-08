@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import datetime
@@ -7,6 +8,13 @@ from pathlib import Path
 ADMINS_FILE = Path("data/admins.json")
 LOGS_FILE = Path("data/logs.json")
 CERT_CONFIG_FILE = Path("data/cert_config.json")
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Escreve para um .tmp e substitui o ficheiro final (evita ficheiros corrompidos)."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _ensure_file():
@@ -19,14 +27,18 @@ def _ensure_file():
 def load_admins() -> list[str]:
     """Carrega a lista de IDs de admins do ficheiro."""
     _ensure_file()
-    data = json.loads(ADMINS_FILE.read_text())
-    return data.get("admins", [])
+    try:
+        data = json.loads(ADMINS_FILE.read_text(encoding="utf-8"))
+        admins = data.get("admins", [])
+        return admins if isinstance(admins, list) else []
+    except Exception:
+        return []
 
 
 def save_admins(admins: list[str]) -> None:
     """Guarda a lista de IDs de admins no ficheiro."""
     _ensure_file()
-    ADMINS_FILE.write_text(json.dumps({"admins": admins}, indent=2))
+    _atomic_write(ADMINS_FILE, json.dumps({"admins": admins}, indent=2))
 
 
 def add_admin(user_id: str) -> bool:
@@ -74,7 +86,9 @@ def add_log(actor_id: str, actor_role: str, action: str, target_id: str = None, 
         logs = json.loads(LOGS_FILE.read_text(encoding="utf-8"))
     except Exception:
         logs = []
-    
+    if not isinstance(logs, list):
+        logs = []
+
     log_entry = {
         "timestamp": datetime.datetime.now().isoformat(),
         "actor_id": actor_id,
@@ -84,14 +98,15 @@ def add_log(actor_id: str, actor_role: str, action: str, target_id: str = None, 
         "details": details
     }
     logs.append(log_entry)
-    LOGS_FILE.write_text(json.dumps(logs, indent=2, ensure_ascii=False), encoding="utf-8")
+    _atomic_write(LOGS_FILE, json.dumps(logs, indent=2, ensure_ascii=False))
 
 
 def get_logs() -> list[dict]:
     """Retorna todos os logs registados."""
     _ensure_logs_file()
     try:
-        return json.loads(LOGS_FILE.read_text(encoding="utf-8"))
+        logs = json.loads(LOGS_FILE.read_text(encoding="utf-8"))
+        return logs if isinstance(logs, list) else []
     except Exception:
         return []
 
@@ -118,25 +133,26 @@ def _load_cert_config() -> dict:
     _ensure_cert_config_file()
     try:
         data = json.loads(CERT_CONFIG_FILE.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return copy.deepcopy(_CERT_CONFIG_DEFAULT)
         # Garantir chaves esperadas mesmo que o ficheiro seja antigo
         data.setdefault("allowed_years", [])
         data.setdefault("alert_channel_id", None)
         return data
     except Exception:
-        return dict(_CERT_CONFIG_DEFAULT)
+        return copy.deepcopy(_CERT_CONFIG_DEFAULT)
 
 
 def _save_cert_config(data: dict) -> None:
     """Guarda a configuração de certificados no ficheiro."""
     _ensure_cert_config_file()
-    CERT_CONFIG_FILE.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _atomic_write(CERT_CONFIG_FILE, json.dumps(data, indent=2, ensure_ascii=False))
 
 
 def get_allowed_years() -> list[str]:
     """Retorna a lista de anos letivos permitidos (ex: ['2025/2026', '2026/2027'])."""
-    return _load_cert_config()["allowed_years"]
+    years = _load_cert_config()["allowed_years"]
+    return years if isinstance(years, list) else []
 
 
 def add_allowed_year(year: str) -> bool:
@@ -168,7 +184,10 @@ def remove_allowed_year(year: str) -> bool:
 def get_cert_alert_channel_id() -> int | None:
     """Retorna o ID do canal de alerta para certificados com ano inválido."""
     raw = _load_cert_config()["alert_channel_id"]
-    return int(raw) if raw else None
+    try:
+        return int(raw) if raw else None
+    except (TypeError, ValueError):
+        return None
 
 
 def set_cert_alert_channel_id(channel_id: int | None) -> None:
@@ -176,3 +195,95 @@ def set_cert_alert_channel_id(channel_id: int | None) -> None:
     data = _load_cert_config()
     data["alert_channel_id"] = channel_id
     _save_cert_config(data)
+
+
+# ─────────────────────────────────────────────────────────────
+# Controlo de duplicados (nº mecanográfico -> utilizador Discord)
+# ─────────────────────────────────────────────────────────────
+
+VERIFIED_FILE = Path("data/verified.json")
+
+
+def _load_verified() -> dict:
+    try:
+        data = json.loads(VERIFIED_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def get_verified_owner(mech_number: str) -> str | None:
+    """Retorna o ID Discord que já verificou este nº mecanográfico (ou None)."""
+    return _load_verified().get(mech_number.lower())
+
+
+def register_verified(mech_number: str, user_id: str) -> None:
+    """Associa um nº mecanográfico ao utilizador Discord que o verificou."""
+    VERIFIED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    data = _load_verified()
+    data[mech_number.lower()] = str(user_id)
+    _atomic_write(VERIFIED_FILE, json.dumps(data, indent=2, ensure_ascii=False))
+
+
+# ─────────────────────────────────────────────────────────────
+# Calendário de avaliações (/calendario)
+# ─────────────────────────────────────────────────────────────
+
+CALENDAR_FILE = Path("data/calendar.json")
+
+
+def _load_calendar() -> list[dict]:
+    try:
+        data = json.loads(CALENDAR_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def get_calendar() -> list[dict]:
+    """Retorna todos os eventos do calendário, ordenados por data."""
+    return sorted(_load_calendar(), key=lambda e: e.get("date", ""))
+
+
+def add_calendar_event(kind: str, subject: str, date: str) -> bool:
+    """
+    Adiciona um evento (date em ISO AAAA-MM-DD).
+    Retorna True se adicionado, False se já existia.
+    """
+    events = _load_calendar()
+    key = (kind, subject.lower(), date)
+    if any((e["kind"], e["subject"].lower(), e["date"]) == key for e in events):
+        return False
+    events.append({"kind": kind, "subject": subject, "date": date})
+    CALENDAR_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(CALENDAR_FILE, json.dumps(events, indent=2, ensure_ascii=False))
+    return True
+
+
+def remove_calendar_event(kind: str, subject: str, date: str) -> bool:
+    """Remove um evento. Retorna True se removido, False se não existia."""
+    events = _load_calendar()
+    key = (kind, subject.lower(), date)
+    kept = [e for e in events if (e["kind"], e["subject"].lower(), e["date"]) != key]
+    if len(kept) == len(events):
+        return False
+    _atomic_write(CALENDAR_FILE, json.dumps(kept, indent=2, ensure_ascii=False))
+    return True
+
+
+CALENDAR_CONFIG_FILE = Path("data/calendar_config.json")
+
+
+def get_calendar_channel_id() -> int | None:
+    """Retorna o ID do canal onde o bot publica os eventos do calendário."""
+    try:
+        data = json.loads(CALENDAR_CONFIG_FILE.read_text(encoding="utf-8"))
+        return int(data["channel_id"]) if data.get("channel_id") else None
+    except Exception:
+        return None
+
+
+def set_calendar_channel_id(channel_id: int | None) -> None:
+    """Define o ID do canal onde o bot publica os eventos do calendário."""
+    CALENDAR_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(CALENDAR_CONFIG_FILE, json.dumps({"channel_id": channel_id}, indent=2))

@@ -127,10 +127,10 @@ async def neeigive(interaction: discord.Interaction, user: discord.Member):
     # 4. Atribuir a role
     try:
         await user.add_roles(role, reason=f"Atribuído por {interaction.user} via /neeigive")
-        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "neeigive", str(user.id), "Atribuiu cargo NEEI")
         await interaction.response.send_message(
             f"✅ Cargo **{role.name}** atribuído com sucesso a {user.mention}!"
         )
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "neeigive", str(user.id), "Atribuiu cargo NEEI")
     except discord.Forbidden:
         await interaction.response.send_message(
             "❌ O bot não tem permissões suficientes para gerir este cargo.\n"
@@ -179,10 +179,10 @@ async def neeiremove(interaction: discord.Interaction, user: discord.Member):
     # 4. Remover a role
     try:
         await user.remove_roles(role, reason=f"Removido por {interaction.user} via /neeiremove")
-        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "neeiremove", str(user.id), "Removeu cargo NEEI")
         await interaction.response.send_message(
             f"✅ Cargo **{role.name}** removido com sucesso de {user.mention}."
         )
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "neeiremove", str(user.id), "Removeu cargo NEEI")
     except discord.Forbidden:
         await interaction.response.send_message(
             "❌ O bot não tem permissões suficientes para gerir este cargo.",
@@ -312,10 +312,10 @@ async def verify(interaction: discord.Interaction, user: discord.Member):
 
     try:
         await user.add_roles(role, reason=f"Verificado por {interaction.user} via /verify")
-        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "verify", str(user.id), "Verificou utilizador")
         await interaction.response.send_message(
             f"✅ O cargo **{role.name}** foi atribuído a {user.mention} com sucesso!"
         )
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "verify", str(user.id), "Verificou utilizador")
     except discord.Forbidden:
         await interaction.response.send_message(
             "❌ O bot não tem permissões para gerir o cargo de verificação. Verifica a hierarquia de cargos.",
@@ -356,10 +356,10 @@ async def unverify(interaction: discord.Interaction, user: discord.Member):
 
     try:
         await user.remove_roles(role, reason=f"Removido por {interaction.user} via /unverify")
-        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "unverify", str(user.id), "Removeu verificação")
         await interaction.response.send_message(
             f"✅ A verificação foi removida de {user.mention}."
         )
+        data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "unverify", str(user.id), "Removeu verificação")
     except discord.Forbidden:
         await interaction.response.send_message(
             "❌ O bot não tem permissões para gerir o cargo de verificação.",
@@ -606,6 +606,71 @@ async def neei(interaction: discord.Interaction):
 
 
 # ─────────────────────────────────────────────────────────────
+# Comando: Ajuda (/help)
+# ─────────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="help",
+    description="Mostra a ajuda do bot: o que faz e a lista de comandos.",
+    guild=guild_obj,
+)
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📖 Ajuda — Bot NEEI",
+        description=(
+            "Bot do **NEEI** para verificação de alunos do IPB, gestão de "
+            "cargos, calendário de eventos e registo de ações.\n"
+            "Os comandos marcados com 🔒 têm restrições de permissão."
+        ),
+        color=discord.Color.blue(),
+    )
+
+    embed.add_field(
+        name="👤 Geral",
+        value=(
+            "`/help` — Mostra esta mensagem.\n"
+            "`/verificacao1` — Verifica-te como aluno do IPB com o Certificado Multiusos.\n"
+            "`/neei` — Lista os membros dos órgãos sociais do NEEI."
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="🔒 Membros NEEI / Admins / Managers",
+        value=(
+            "`/listneei` — Lista os membros com a role NEEI.\n"
+            "`/listadmin` — Lista os Admins e Managers do bot."
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="🛡️ Admins / Managers",
+        value=(
+            "`/neeigive` · `/neeiremove` — Atribui / remove a role NEEI.\n"
+            "`/verify` · `/unverify` — Atribui / remove o cargo de verificação.\n"
+            "`/calendario` — Adiciona ou remove eventos do calendário.\n"
+            "`/sayimage` — Reenvia uma imagem para o canal configurado.\n"
+            "`/logs` — Mostra os logs de ações por grupo.\n"
+            "`/certconfig listyears` — Mostra os anos letivos aceites."
+        ),
+        inline=False,
+    )
+    embed.add_field(
+        name="👑 Apenas Managers",
+        value=(
+            "`/admingive` · `/adminremove` — Dá / remove permissões de Admin do bot.\n"
+            "`/config` — Define o cargo de verificação.\n"
+            "`/configcalendario` — Define o canal do calendário.\n"
+            "`/certconfig addyear` · `removeyear` · `alertchannel` — Gere anos letivos e canal de alerta.\n"
+            "`/delete` — Elimina um número de mensagens no canal."
+        ),
+        inline=False,
+    )
+    embed.set_footer(text="Usa / para ver a descrição e os parâmetros de cada comando.")
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+# ─────────────────────────────────────────────────────────────
 # Comando: Enviar Imagem via Bot (/sayimage)
 # ─────────────────────────────────────────────────────────────
 
@@ -657,10 +722,28 @@ async def sayimage(
                 return
 
     # 4. Converter a imagem enviada para um discord.File
-    image_file = await imagem.to_file()
+    try:
+        image_file = await imagem.to_file()
+    except discord.HTTPException as e:
+        await interaction.response.send_message(
+            f"❌ Não foi possível descarregar a imagem: `{e}`", ephemeral=True
+        )
+        return
 
     # 5. Enviar apenas a imagem no canal de destino
-    await target_channel.send(file=image_file)
+    try:
+        await target_channel.send(file=image_file)
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ O bot não tem permissão para enviar mensagens nesse canal.",
+            ephemeral=True,
+        )
+        return
+    except discord.HTTPException as e:
+        await interaction.response.send_message(
+            f"❌ Ocorreu um erro ao enviar a imagem: `{e}`", ephemeral=True
+        )
+        return
     data_manager.add_log(str(interaction.user.id), get_user_role(interaction), "sayimage", None, "Enviou imagem como bot")
 
     # 6. Responder de forma privada (ephemeral) confirmando o envio
@@ -753,13 +836,13 @@ async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int
     for log in logs:
         match = False
         if group_val == "manager":
-            if log["actor_role"] == "manager":
+            if log.get("actor_role") == "manager":
                 match = True
         elif group_val == "admin":
-            if log["actor_role"] == "admin" or log["action"] in ["admingive", "adminremove"]:
+            if log.get("actor_role") == "admin" or log.get("action") in ["admingive", "adminremove"]:
                 match = True
         elif group_val == "neei":
-            if log["actor_role"] == "neei" or log["action"] in ["neeigive", "neeiremove"]:
+            if log.get("actor_role") == "neei" or log.get("action") in ["neeigive", "neeiremove"]:
                 match = True
         elif group_val == "all":
             match = True
@@ -774,11 +857,14 @@ async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int
     # Build all lines (most recent first)
     lines = []
     for log in reversed(filtered_logs):
-        dt = datetime.datetime.fromisoformat(log["timestamp"]).strftime("%d/%m %H:%M")
-        actor = f"<@{log['actor_id']}>"
+        try:
+            dt = datetime.datetime.fromisoformat(log["timestamp"]).strftime("%d/%m %H:%M")
+        except (KeyError, TypeError, ValueError):
+            dt = str(log.get("timestamp", "??"))
+        actor = f"<@{log.get('actor_id', '?')}>"
         target = f" -> <@{log['target_id']}>" if log.get("target_id") else ""
         details = f" ({log['details']})" if log.get("details") else ""
-        action = f"**{log['action']}**"
+        action = f"**{log.get('action', '?')}**"
         line = f"`[{dt}]` {actor} {action}{target}{details}"
         lines.append(line)
     
@@ -811,7 +897,7 @@ async def logs_command(interaction: discord.Interaction, grupo: str, pagina: int
 
 cert_config_group = app_commands.Group(
     name="certconfig",
-    description="Configuração da Verificação 1 — anos letivos e canal de alerta. (Apenas Managers)",
+    description="Configuração da Verificação 1 — anos letivos e canal de alerta.",
 )
 bot.tree.add_command(cert_config_group, guild=guild_obj)
 
@@ -829,9 +915,11 @@ async def certconfig_addyear(interaction: discord.Interaction, ano: str):
         return
 
     import re
-    if not re.fullmatch(r"\d{4}/\d{4}", ano.strip()):
+    m = re.fullmatch(r"([0-9]{4})/([0-9]{4})", ano.strip())
+    if not m or int(m.group(2)) != int(m.group(1)) + 1:
         await interaction.response.send_message(
-            "⚠️ Formato inválido. Usa o formato `AAAA/AAAA` (ex: `2025/2026`).",
+            "⚠️ Formato inválido. Usa o formato `AAAA/AAAA` com anos consecutivos "
+            "(ex: `2025/2026`).",
             ephemeral=True,
         )
         return
@@ -889,7 +977,7 @@ async def certconfig_removeyear(interaction: discord.Interaction, ano: str):
 
 @cert_config_group.command(
     name="listyears",
-    description="Mostra os anos letivos aceites na Verificação 1.",
+    description="Mostra os anos letivos aceites na Verificação 1. (Apenas Admins/Managers)",
 )
 async def certconfig_listyears(interaction: discord.Interaction):
     if not user_is_admin_or_manager(interaction):
@@ -941,6 +1029,143 @@ async def certconfig_alertchannel(interaction: discord.Interaction, canal: disco
     await interaction.response.send_message(
         f"✅ Canal de alerta configurado para {canal.mention}.\n"
         "Quando alguém enviar um certificado com ano letivo inválido, será enviado um alerta aqui."
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# Comando: Calendário de avaliações (/calendario)
+# ─────────────────────────────────────────────────────────────
+
+CALENDAR_KINDS = {
+    "teste": "Teste",
+    "trabalho": "Trabalho",
+    "trabalho grupo": "Trabalho de grupo",
+    "exame intercalar": "Exame intercalar",
+    "exame final": "Exame final",
+    "exame recurso": "Exame de recurso",
+    "exame epoca especial": "Exame de época especial",
+}
+
+
+@bot.tree.command(
+    name="calendario",
+    description="Adiciona ou remove um evento do calendário. (Apenas Admins/Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(
+    tipo="Adicionar ou remover o evento",
+    o_que="Tipo de avaliação",
+    disciplina="Nome da disciplina (ex: Programação)",
+    data="Data no formato DD/MM/AAAA",
+)
+@app_commands.choices(
+    tipo=[
+        app_commands.Choice(name="add", value="add"),
+        app_commands.Choice(name="remove", value="remove"),
+    ],
+    o_que=[app_commands.Choice(name=k, value=k) for k in CALENDAR_KINDS],
+)
+async def calendario(
+    interaction: discord.Interaction,
+    tipo: str,
+    o_que: str,
+    disciplina: str,
+    data: str,
+):
+    if not user_is_admin_or_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Não tens permissão para usar este comando.", ephemeral=True
+        )
+        return
+
+    try:
+        date = datetime.datetime.strptime(data.strip(), "%d/%m/%Y").date()
+    except ValueError:
+        await interaction.response.send_message(
+            "⚠️ Data inválida. Usa o formato `DD/MM/AAAA` (ex: `25/01/2027`).",
+            ephemeral=True,
+        )
+        return
+
+    subject = disciplina.strip()
+    if not subject:
+        await interaction.response.send_message(
+            "⚠️ Indica o nome da disciplina.", ephemeral=True
+        )
+        return
+
+    channel_id = data_manager.get_calendar_channel_id()
+    channel = interaction.guild.get_channel(channel_id) if channel_id else None
+    if channel is None:
+        await interaction.response.send_message(
+            "⚠️ O canal do calendário ainda não está configurado. "
+            "Um Manager tem de usar `/configcalendario` primeiro.",
+            ephemeral=True,
+        )
+        return
+
+    label = CALENDAR_KINDS[o_que]
+    desc = f"{label} de **{subject}** em **{date.strftime('%d/%m/%Y')}**"
+    if tipo == "add":
+        ok = data_manager.add_calendar_event(o_que, subject, date.isoformat())
+        if not ok:
+            await interaction.response.send_message(
+                f"⚠️ Esse evento já existe: {desc}.", ephemeral=True
+            )
+            return
+        action, title, color = "calendario_add", "📅 Novo evento", discord.Color.green()
+    else:
+        ok = data_manager.remove_calendar_event(o_que, subject, date.isoformat())
+        if not ok:
+            await interaction.response.send_message(
+                f"⚠️ Não encontrei esse evento: {desc}.", ephemeral=True
+            )
+            return
+        action, title, color = "calendario_remove", "🗑️ Evento removido", discord.Color.red()
+
+    data_manager.add_log(
+        str(interaction.user.id), get_user_role(interaction),
+        action, None, f"{o_que} | {subject} | {date.isoformat()}"
+    )
+
+    embed = discord.Embed(title=title, color=color)
+    embed.add_field(name="Tipo", value=label, inline=True)
+    embed.add_field(name="Disciplina", value=subject, inline=True)
+    embed.add_field(name="Data", value=date.strftime("%d/%m/%Y"), inline=True)
+    embed.set_footer(text=f"Por {interaction.user.display_name}")
+    try:
+        await channel.send(embed=embed)
+    except discord.HTTPException:
+        await interaction.response.send_message(
+            f"⚠️ O evento foi guardado, mas não consegui enviar a mensagem para {channel.mention}.",
+            ephemeral=True,
+        )
+        return
+    await interaction.response.send_message(
+        f"✅ Feito. Mensagem enviada para {channel.mention}.", ephemeral=True
+    )
+
+
+@bot.tree.command(
+    name="configcalendario",
+    description="Define o canal onde o bot publica os eventos do calendário. (Apenas Managers)",
+    guild=guild_obj,
+)
+@app_commands.describe(canal="Canal onde os eventos do calendário serão publicados")
+async def configcalendario(interaction: discord.Interaction, canal: discord.TextChannel):
+    if not user_is_manager(interaction):
+        await interaction.response.send_message(
+            "❌ Apenas os **Managers** podem usar este comando.", ephemeral=True
+        )
+        return
+
+    data_manager.set_calendar_channel_id(canal.id)
+    data_manager.add_log(
+        str(interaction.user.id), get_user_role(interaction),
+        "configcalendario", None, f"Definiu canal do calendário: {canal.id}"
+    )
+    await interaction.response.send_message(
+        f"✅ Canal do calendário configurado para {canal.mention}."
     )
 
 

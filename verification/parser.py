@@ -57,12 +57,14 @@ _MECH_PATTERNS = [
 # Padrão para número de documento de identificação (BI/CC/Passaporte)
 # BI: 8 dígitos; CC: 8 dígitos + letra + 2 dígitos; Passaporte: letra + 6 dígitos
 _ID_PATTERNS = [
+    # CC português completo: XXXXXXXX N ZZ (ex: 12345678 4 ZZ4)
+    r"(\d{8}\s*\d\s*[A-Z]{2}\d)",
     # "titular do documento de identificação XXXXXXXX" (secção PT)
-    r"(?:titular\s+do\s+documento\s+de\s+identifica[cç][aã]o\s*[\"«»]?\s*)([A-Z0-9]{6,12})",
+    r"(?:titular\s+do\s+documento\s+de\s+identifica[cç][aã]o\s*[\"«»]?\s*)((?=[A-Z0-9]*\d)[A-Z0-9]{6,12})",
     # "owner of the identification document XXXXXXXX" (secção EN)
-    r"(?:owner\s+of\s+the\s+identification\s+document\s*[\"«»]?\s*)([A-Z0-9]{6,12})",
+    r"(?:owner\s+of\s+the\s+identification\s+document\s*[\"«»]?\s*)((?=[A-Z0-9]*\d)[A-Z0-9]{6,12})",
     # "documento de identificação" seguido de número entre aspas ou separadores
-    r"identifica[cç][aã]o\s*[\"«»\s]*([A-Z0-9]{6,12})",
+    r"identifica[cç][aã]o\s*[\"«»\s]*((?=[A-Z0-9]*\d)[A-Z0-9]{6,12})",
     # CC português: XXXXXXXX N ZZ (ex: 12345678 4 ZZ4)
     r"\b(\d{8}\s*\d\s*[A-Z]{2}\d)\b",
     # BI simples: 8 dígitos
@@ -74,11 +76,11 @@ _ID_PATTERNS = [
 # No certificado EN: "certified that the student NOME COMPLETO, with the number"
 _NAME_PATTERNS = [
     # Secção portuguesa
-    r"(?:certifica-?se\s+que\s+o\s+estudante\s+)([A-ZÀ-Ž][a-zA-ZÀ-ž\s]{5,60}?)(?:\s*,\s*com|\s+com\s+o\s+n)",
+    r"(?:certifica-?se\s+que\s+o\s+estudante\s+)([A-ZÀ-Ž][a-zA-ZÀ-ž\s'’\-]{5,60}?)(?:\s*,\s*com|\s+com\s+o\s+n)",
     # Secção inglesa (nome pode estar entre aspas)
-    r"(?:certified\s+that\s+the\s+student\s+[\"«»]?)([A-ZÀ-Ž][a-zA-ZÀ-ž\s]{5,60}?)(?:[\"«»]?\s*,?\s*with)",
+    r"(?:certified\s+that\s+the\s+student\s+[\"«»]?)([A-ZÀ-Ž][a-zA-ZÀ-ž\s'’\-]{5,60}?)(?:[\"«»]?\s*,?\s*with)",
     # Fallback: após "o estudante" ou "the student"
-    r"(?:o\s+estudante|the\s+student)\s+[\"«»]?([A-ZÀ-Ž][a-zA-ZÀ-ž\s]{5,60}?)(?:[\"«»]?[\s,])",
+    r"(?:o\s+estudante|the\s+student)\s+[\"«»]?([A-ZÀ-Ž][a-zA-ZÀ-ž\s'’\-]{5,60}?)(?:[\"«»]?\s*,\s*(?:com|with))",
 ]
 
 # Padrões para o ano letivo

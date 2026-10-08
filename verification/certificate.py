@@ -19,6 +19,7 @@ ou
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import mimetypes
 import os
@@ -102,7 +103,7 @@ async def verify_certificate(
 
         # 3. Extrair texto
         try:
-            text = extract_text(tmp_path, mime_type)
+            text = await asyncio.to_thread(extract_text, tmp_path, mime_type)
         except ValueError as exc:
             logger.warning("Tipo de ficheiro não suportado: %s", exc)
             return {"valid": False, "reason": "Tipo de ficheiro não suportado."}

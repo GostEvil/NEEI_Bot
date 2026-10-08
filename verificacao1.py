@@ -81,11 +81,11 @@ async def _handle_verificacao1(
     # ephemeral=False para que a resposta final seja visível no canal
     await interaction.response.defer(thinking=True)
 
-    # Carregar anos letivos permitidos
-    allowed_years = data_manager.get_allowed_years()  # lista vazia = sem restrição de ano
-
     # Processar o attachment
     try:
+        # Anos letivos permitidos (lista vazia = sem restrição de ano)
+        allowed_years = data_manager.get_allowed_years()
+
         file_bytes = await attachment.read()
         mime_type = attachment.content_type  # pode ser None
 
@@ -101,14 +101,47 @@ async def _handle_verificacao1(
 
     # Responder ao utilizador e enviar log
     if result.get("valid"):
-        await _send_success_response(interaction, result)
-        await _send_private_log(interaction, result, success=True)
+        # Impedir que o mesmo nº mecanográfico seja usado por várias contas Discord
+        mech = result.get("mechanographic_number")
+        owner = data_manager.get_verified_owner(mech) if mech else None
+        if owner and owner != str(interaction.user.id):
+            result = {
+                "valid": False,
+                "reason": f"Certificado (nº {mech}) já foi usado por outra conta Discord (ID {owner}).",
+            }
+            await _send_failure_response(interaction)
+            await _send_private_log(interaction, result, success=False,
+                                    failure_reason=result["reason"])
+            return
 
-        # Alterar nickname e atribuir cargo de verificação
+        await _send_success_response(interaction, result)
+
+        # Alterar nickname e atribuir cargo ANTES do log (o log não pode impedir a role)
         member = interaction.guild.get_member(interaction.user.id)
+        if member is None:
+            try:
+                member = await interaction.guild.fetch_member(interaction.user.id)
+            except discord.HTTPException as exc:
+                logger.error("Não foi possível obter o membro %s: %s", interaction.user.id, exc)
         if member:
             await _apply_nickname(interaction, member, result["nickname"])
             await _apply_verify_role(interaction, member)
+            if mech:
+                data_manager.register_verified(mech, str(interaction.user.id))
+        else:
+            try:
+                await interaction.followup.send(
+                    "⚠️ O certificado foi validado, mas não foi possível atualizar o nickname "
+                    "e o cargo. Contacta um administrador.",
+                    ephemeral=True,
+                )
+            except Exception:
+                pass
+
+        try:
+            await _send_private_log(interaction, result, success=True)
+        except Exception as exc:
+            logger.error("Erro ao enviar log de verificação: %s", exc)
     elif result.get("year_mismatch"):
         # Certificado válido, mas ano letivo não é aceite
         await _send_failure_response(interaction)
@@ -364,21 +397,21 @@ async def _send_private_log(
     )
 
     if success:
-        embed.add_field(name="Nome", value=result.get("name", "—"), inline=True)
+        embed.add_field(name="Nome", value=result.get("name") or "—", inline=True)
         embed.add_field(
             name="Nº Mecanográfico",
-            value=result.get("mechanographic_number", "—"),
+            value=result.get("mechanographic_number") or "—",
             inline=True,
         )
         embed.add_field(
             name="Doc. Identificação",
-            value=result.get("identification_document", "—"),
+            value=result.get("identification_document") or "—",
             inline=True,
         )
-        embed.add_field(name="Ano Letivo", value=result.get("academic_year", "—"), inline=True)
-        embed.add_field(name="Curso", value=result.get("course", "—"), inline=True)
-        embed.add_field(name="Instituição", value=result.get("institution", "—"), inline=True)
-        embed.add_field(name="Nickname Atribuído", value=result.get("nickname", "—"), inline=True)
+        embed.add_field(name="Ano Letivo", value=result.get("academic_year") or "—", inline=True)
+        embed.add_field(name="Curso", value=result.get("course") or "—", inline=True)
+        embed.add_field(name="Instituição", value=result.get("institution") or "—", inline=True)
+        embed.add_field(name="Nickname Atribuído", value=result.get("nickname") or "—", inline=True)
     else:
         if result.get("academic_year"):
             embed.add_field(name="Ano no Certificado", value=result["academic_year"], inline=True)
