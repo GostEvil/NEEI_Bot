@@ -90,7 +90,7 @@ def test_anyone_can_add_but_only_neei_plus_can_remove():
 def test_embed_sent_to_channel():
     i = run("2", "add", "exame final", "2101", "01/02/2027")
     embed = i.guild.get_channel.return_value.send.call_args.kwargs["embed"]
-    assert [f.value for f in embed.fields] == ["Exame final", "[2101] Bases de Dados", "01/02/2027"]
+    assert [f.value for f in embed.fields] == ["Exame final", "Bases de Dados", "01/02/2027"]
 
 
 def test_requires_configured_channel():

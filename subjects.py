@@ -40,8 +40,8 @@ SUBJECTS: dict[str, str] = {
 
 
 def subject_label(code: str) -> str:
-    """Devolve '[1102] Cálculo' (ou o próprio texto se o código for desconhecido)."""
-    return f"[{code}] {SUBJECTS[code]}" if code in SUBJECTS else code
+    """Nome da disciplina (ou o próprio texto se o código for desconhecido)."""
+    return SUBJECTS.get(code, code)
 
 
 def subjects_for_semester(semester: int) -> dict[str, str]:

@@ -1157,13 +1157,13 @@ async def calendario(
 async def calendario_disciplina_autocomplete(
     interaction: discord.Interaction, current: str
 ) -> list[app_commands.Choice[str]]:
-    """Sugere as disciplinas do semestre ativo (por código ou nome)."""
+    """Sugere as disciplinas do semestre ativo (por nome)."""
     term = current.strip().lower()
     subjects = subjects_for_semester(data_manager.get_semester())
     return [
         app_commands.Choice(name=subject_label(code)[:100], value=code)
         for code, name in subjects.items()
-        if term in code or term in name.lower()
+        if term in name.lower()
     ][:25]
 
 
