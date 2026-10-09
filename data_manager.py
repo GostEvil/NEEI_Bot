@@ -245,26 +245,32 @@ def get_calendar() -> list[dict]:
     return sorted(_load_calendar(), key=lambda e: e.get("date", ""))
 
 
-def add_calendar_event(kind: str, subject: str, date: str) -> bool:
+def _event_key(e: dict) -> tuple:
+    return (e["kind"], e["subject"].lower(), e["date"], e.get("turno", ""))
+
+
+def add_calendar_event(
+    kind: str, subject: str, date: str, turno: str = "", notes: str = ""
+) -> bool:
     """
     Adiciona um evento (date em ISO AAAA-MM-DD).
-    Retorna True se adicionado, False se já existia.
+    Retorna True se adicionado, False se já existia (mesmo tipo, disciplina, data e turno).
     """
     events = _load_calendar()
-    key = (kind, subject.lower(), date)
-    if any((e["kind"], e["subject"].lower(), e["date"]) == key for e in events):
+    event = {"kind": kind, "subject": subject, "date": date, "turno": turno, "notes": notes}
+    if any(_event_key(e) == _event_key(event) for e in events):
         return False
-    events.append({"kind": kind, "subject": subject, "date": date})
+    events.append(event)
     CALENDAR_FILE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write(CALENDAR_FILE, json.dumps(events, indent=2, ensure_ascii=False))
     return True
 
 
-def remove_calendar_event(kind: str, subject: str, date: str) -> bool:
+def remove_calendar_event(kind: str, subject: str, date: str, turno: str = "") -> bool:
     """Remove um evento. Retorna True se removido, False se não existia."""
     events = _load_calendar()
-    key = (kind, subject.lower(), date)
-    kept = [e for e in events if (e["kind"], e["subject"].lower(), e["date"]) != key]
+    target = {"kind": kind, "subject": subject, "date": date, "turno": turno}
+    kept = [e for e in events if _event_key(e) != _event_key(target)]
     if len(kept) == len(events):
         return False
     _atomic_write(CALENDAR_FILE, json.dumps(kept, indent=2, ensure_ascii=False))

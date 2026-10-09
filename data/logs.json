@@ -102,5 +102,13 @@
     "action": "calendario_add",
     "target_id": null,
     "details": "teste | DM | 2026-10-13"
+  },
+  {
+    "timestamp": "2026-10-08T19:34:15.839953",
+    "actor_id": "1365092560044953611",
+    "actor_role": "manager",
+    "action": "calendario_add",
+    "target_id": null,
+    "details": "teste | 3102 | 2026-10-13"
   }
 ]

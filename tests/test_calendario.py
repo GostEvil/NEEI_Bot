@@ -14,6 +14,7 @@ os.environ["NEEI_ROLE_NAME"] = "NEEI"
 os.environ["DISCORD_TOKEN"] = "x"
 
 import bot  # noqa: E402
+import config  # noqa: E402
 import data_manager as dm  # noqa: E402
 
 
@@ -23,6 +24,8 @@ def tmp_data(tmp_path, monkeypatch):
     monkeypatch.setattr(dm, "LOGS_FILE", tmp_path / "logs.json")
     monkeypatch.setattr(dm, "CALENDAR_FILE", tmp_path / "calendar.json")
     monkeypatch.setattr(dm, "CALENDAR_CONFIG_FILE", tmp_path / "calendar_config.json")
+    # Outros módulos de teste definem MANAGER_IDS antes deste; fixar aqui.
+    monkeypatch.setattr(config, "get_manager_ids", lambda: ["1"])
     dm.add_admin("2")
     dm.set_calendar_channel_id(555)
 
@@ -41,9 +44,9 @@ def text(i):
     return args[0] if args else kwargs.get("content", "")
 
 
-def run(uid, tipo, o_que, disc, data):
+def run(uid, tipo, o_que, disc, data, turno=None, obs=None):
     i = make_interaction(uid)
-    asyncio.run(bot.calendario.callback(i, tipo, o_que, disc, data))
+    asyncio.run(bot.calendario.callback(i, tipo, o_que, disc, data, turno, obs))
     return i
 
 
@@ -51,7 +54,7 @@ def test_add_and_remove():
     i = run("2", "add", "teste", "1103", "25/01/2027")
     assert "Feito" in text(i)
     assert dm.get_calendar() == [
-        {"kind": "teste", "subject": "1103", "date": "2027-01-25"}
+        {"kind": "teste", "subject": "1103", "date": "2027-01-25", "turno": "", "notes": ""}
     ]
     i = run("2", "remove", "teste", "1103", "25/01/2027")
     assert "Feito" in text(i)
@@ -151,3 +154,17 @@ def test_autocomplete_year_separators():
     assert names == ["──── 1º ano ────", "Cálculo"]
     i = run("2", "add", "teste", "ano:1", "25/01/2027")
     assert "separador" in text(i)
+
+
+def test_turno_and_observacoes():
+    i = run("2", "add", "teste", "1103", "25/01/2027", "B", "Levar calculadora")
+    embed = i.guild.get_channel.return_value.send.call_args.kwargs["embed"]
+    assert [(f.name, f.value) for f in embed.fields][-2:] == [
+        ("Turno", "B"), ("Observações", "Levar calculadora")
+    ]
+    # outro turno no mesmo dia é um evento diferente
+    assert "Feito" in text(run("2", "add", "teste", "1103", "25/01/2027", "C"))
+    assert "já existe" in text(run("2", "add", "teste", "1103", "25/01/2027", "B"))
+    assert "Não encontrei" in text(run("2", "remove", "teste", "1103", "25/01/2027"))
+    assert "Feito" in text(run("2", "remove", "teste", "1103", "25/01/2027", "B"))
+    assert [e["turno"] for e in dm.get_calendar()] == ["C"]

@@ -631,7 +631,8 @@ async def help_command(interaction: discord.Interaction):
         value=(
             "`/help` — Mostra esta mensagem.\n"
             "`/verificacao1` — Verifica-te como aluno do IPB com o Certificado Multiusos.\n"
-            "`/neei` — Lista os membros dos órgãos sociais do NEEI."
+            "`/neei` — Lista os membros dos órgãos sociais do NEEI.\n"
+            "`/calendario` — Adiciona (todos) ou remove (🔒 NEEI/Admins/Managers) eventos do calendário."
         ),
         inline=False,
     )
@@ -648,7 +649,6 @@ async def help_command(interaction: discord.Interaction):
         value=(
             "`/neeigive` · `/neeiremove` — Atribui / remove a role NEEI.\n"
             "`/verify` · `/unverify` — Atribui / remove o cargo de verificação.\n"
-            "`/calendario` — Adiciona ou remove eventos do calendário.\n"
             "`/sayimage` — Reenvia uma imagem para o canal configurado.\n"
             "`/logs` — Mostra os logs de ações por grupo.\n"
             "`/certconfig listyears` — Mostra os anos letivos aceites."
@@ -661,6 +661,7 @@ async def help_command(interaction: discord.Interaction):
             "`/admingive` · `/adminremove` — Dá / remove permissões de Admin do bot.\n"
             "`/config` — Define o cargo de verificação.\n"
             "`/configcalendario` — Define o canal do calendário.\n"
+            "`/configsemestre` — Define o semestre ativo (1 ou 2) das disciplinas do calendário.\n"
             "`/certconfig addyear` · `removeyear` · `alertchannel` — Gere anos letivos e canal de alerta.\n"
             "`/delete` — Elimina um número de mensagens no canal."
         ),
@@ -1060,6 +1061,8 @@ CALENDAR_KINDS = {
     o_que="Tipo de avaliação",
     disciplina="Disciplina do semestre ativo (escreve para pesquisar)",
     data="Data no formato DD/MM/AAAA",
+    turno="Turno (opcional)",
+    observacoes="Notas adicionais (opcional)",
 )
 @app_commands.choices(
     tipo=[
@@ -1067,6 +1070,7 @@ CALENDAR_KINDS = {
         app_commands.Choice(name="remove", value="remove"),
     ],
     o_que=[app_commands.Choice(name=k, value=k) for k in CALENDAR_KINDS],
+    turno=[app_commands.Choice(name=t, value=t) for t in ("A", "B", "C", "D")],
 )
 async def calendario(
     interaction: discord.Interaction,
@@ -1074,7 +1078,11 @@ async def calendario(
     o_que: str,
     disciplina: str,
     data: str,
+    turno: str | None = None,
+    observacoes: str | None = None,
 ):
+    turno = turno or ""
+    notes = (observacoes or "").strip()
     if tipo == "remove" and get_user_role(interaction) == "user":
         await interaction.response.send_message(
             "❌ Apenas membros **NEEI**, Admins ou Managers podem remover eventos.",
@@ -1121,8 +1129,10 @@ async def calendario(
 
     label = CALENDAR_KINDS[o_que]
     desc = f"{label} de **{subject_label(subject)}** em **{date.strftime('%d/%m/%Y')}**"
+    if turno:
+        desc += f" (turno {turno})"
     if tipo == "add":
-        ok = data_manager.add_calendar_event(o_que, subject, date.isoformat())
+        ok = data_manager.add_calendar_event(o_que, subject, date.isoformat(), turno, notes)
         if not ok:
             await interaction.response.send_message(
                 f"⚠️ Esse evento já existe: {desc}.", ephemeral=True
@@ -1130,7 +1140,7 @@ async def calendario(
             return
         action, title, color = "calendario_add", "📅 Novo evento", discord.Color.green()
     else:
-        ok = data_manager.remove_calendar_event(o_que, subject, date.isoformat())
+        ok = data_manager.remove_calendar_event(o_que, subject, date.isoformat(), turno)
         if not ok:
             await interaction.response.send_message(
                 f"⚠️ Não encontrei esse evento: {desc}.", ephemeral=True
@@ -1140,13 +1150,17 @@ async def calendario(
 
     data_manager.add_log(
         str(interaction.user.id), get_user_role(interaction),
-        action, None, f"{o_que} | {subject} | {date.isoformat()}"
+        action, None, f"{o_que} | {subject} | {date.isoformat()} | turno {turno or '-'}"
     )
 
     embed = discord.Embed(title=title, color=color)
     embed.add_field(name="Tipo", value=label, inline=True)
     embed.add_field(name="Disciplina", value=subject_label(subject), inline=True)
     embed.add_field(name="Data", value=date.strftime("%d/%m/%Y"), inline=True)
+    if turno:
+        embed.add_field(name="Turno", value=turno, inline=True)
+    if notes:
+        embed.add_field(name="Observações", value=notes[:1024], inline=False)
     embed.set_footer(text=f"Por {interaction.user.display_name}")
     try:
         await channel.send(embed=embed)
