@@ -7,7 +7,7 @@ Bot de Discord para gestão do cargo **NEEI**.
 
 ## Comandos Disponíveis
 
-Igual ao `/help` do bot. Os comandos marcados com 🔒 têm restrições de permissão.
+Igual ao `/help` do bot
 
 ### 👤 Geral (todos)
 
